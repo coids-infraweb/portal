@@ -189,7 +189,7 @@ class ServidorOperatingSystem(models.Model):
     class Meta:
         unique_together = ('servidor', 'so')
         verbose_name = "Servidor operacional"
-        verbose_name_plural = "Servidores operacionais"
+        verbose_name_plural = "Sistema operacional"
 
 
 class ResponsavelGrupoTrabalho(models.Model):
