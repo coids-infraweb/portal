@@ -1,6 +1,6 @@
 from django.contrib import admin
-from apps.core.forms import TenantsInLineForm, GrupoTrabalhoForm, ResponsavelGrupoTrabalhoInLineForm, DivisaoForm
-from apps.core.models import Tenants, GrupoTrabalho, GrupoAcesso, Divisao, GrupoPortal, ResponsavelGrupoTrabalho, ColaboradorGrupoAcesso, Predio
+from apps.core.forms import OperatingSystemInLineForm, TenantsInLineForm, GrupoTrabalhoForm, ResponsavelGrupoTrabalhoInLineForm, DivisaoForm
+from apps.core.models import OperatingSystem, Tenants, GrupoTrabalho, GrupoAcesso, Divisao, GrupoPortal, ResponsavelGrupoTrabalho, ColaboradorGrupoAcesso, Predio
 from apps.core.utils.freeipa import FreeIPA
 from apps.infra.admin import StorageAreaGrupoTrabalhoInLine, GrupoAcessoEquipamentoInLineRead
 from django.contrib.auth.models import Group
@@ -226,6 +226,20 @@ class TenantsAdmin(admin.ModelAdmin):
     
     def save_model(self, request, obj, form, change):
         return super().save_model(request, obj, form, change)
+    
+@admin.register(OperatingSystem)
+class OperatingSystemAdmin(admin.ModelAdmin):
+    model = OperatingSystem
+    search_fields = ("so",)
+    ordering = ("so",)
+    form = OperatingSystemInLineForm
         
+    def add_view(self, request, form_url="", extra_context=None):
+        usuario_logado = request.user
+        extra_context = dict(usuario_logado=usuario_logado)
+        return super().add_view(request, form_url, extra_context)
+    
+    def save_model(self, request, obj, form, change):
+        return super().save_model(request, obj, form, change)
 
 admin.site.unregister(Group)

@@ -27,3 +27,7 @@ class ColaboradorGrupoAcessoManager(models.Manager):
 class TenantsManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
+
+class OperatingSystemManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()

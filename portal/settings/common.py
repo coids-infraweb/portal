@@ -162,7 +162,8 @@ GARB_CONFIG = {
                 {"model": "core.grupotrabalho"},
                 {"model": "core.grupoacesso"}, 
                 {"model": "core.grupoportal"},
-                {"model": "core.tenants"}
+                {"model": "core.tenants"},
+                {"model": "core.operatingsystem"},
             ]
         },
         

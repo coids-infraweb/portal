@@ -1,4 +1,4 @@
-from apps.core.models import ServidorTenants, Tenants
+from apps.core.models import OperatingSystem, ServidorOperatingSystem, ServidorTenants, Tenants
 from apps.infra.utils.xen_crud import XenCrud
 from secrets import choice
 
@@ -9,7 +9,7 @@ from apps.core.utils.freeipa import FreeIPA
 from apps.infra.forms import (AmbienteVirtualServidorInLineForm,
                               EquipamentoGrupoAcessoForm, EquipamentoParteForm,
                               HostnameIPForm, HostnameIPInLineForm, OcorrenciaChecklistInLineForm,
-                              OcorrenciaInLineForm, RackForm, ServidorForm, TemplateComandoInLineForm,
+                              OcorrenciaInLineForm, RackForm, ServidorForm, ServidorOperatingSystemInLineForm, TemplateComandoInLineForm,
                               StorageAreaGrupoTrabalhoInLineForm, ServidorTenantsInLineForm)
 from apps.infra.models import (AmbienteVirtual, 
                                EquipamentoGrupoAcesso, EquipamentoParte,
@@ -18,7 +18,7 @@ from apps.infra.models import (AmbienteVirtual,
                                StorageAreaGrupoTrabalho, Supercomputador, TemplateComando, TemplateHostnameIP, TemplateVM)
 from apps.infra.utils.freeipa_location import Automount
 from apps.infra.utils.history import HistoryInfra
-
+from django.utils.translation import gettext_lazy as _
 
 class OcorrenciaInLine(admin.TabularInline):
     model = Ocorrencia
@@ -184,6 +184,15 @@ class TenantsInLine(admin.TabularInline):
         formset = super(TenantsInLine, self).get_formset(request, obj, **kwargs)
         return formset
 
+class OperatingSystemInLine(admin.TabularInline):
+    model = ServidorOperatingSystem
+    fields = ("so",)
+    extra = 0
+    form = ServidorOperatingSystemInLineForm
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super(OperatingSystemInLine, self).get_formset(request, obj, **kwargs)
+        return formset
 
 class OcorrenciaChecklistInLine(admin.TabularInline):
     model = Ocorrencia
@@ -243,14 +252,57 @@ class StorageAdmin(admin.ModelAdmin):
     exclude = ("rack", "rack_tamanho", "rack_posicao", "consumo", "grupos_acesso", "patrimonio", "serie",  "tipo_uso", "tipo", "status", "grupos",)
     inlines = (StorageAreaInLine, OcorrenciaInLine)
 
+class TenantsFilter(admin.SimpleListFilter):
+    title = _('Tenant')
+    parameter_name = 'tenants'
 
+    def lookups(self, request, model_admin):
+        tenants = Tenants.objects.all()
+        return [(tenant.id, tenant.tenants) for tenant in tenants]
+
+    def queryset(self, request, queryset):
+        try:
+            queryt = ServidorTenants.objects.all()
+            if self.value():
+                tenants = queryt.filter(tenant_id=self.value())
+                tenants_id = [t.servidor_id for t in tenants]
+                return queryset.filter(id__in=tenants_id)
+        except Exception as err:
+            print(f'ERROR FILTER TENANTS: {err}')
+        return queryset
+
+
+class OperatingSystemFilter(admin.SimpleListFilter):
+    title = _('SO')
+    parameter_name = 'so'
+
+    def lookups(self, request, model_admin):
+        operating_systems = OperatingSystem.objects.all()
+        return [(so.id, so.so) for so in operating_systems]
+
+    def queryset(self, request, queryset):
+        try:
+            queryop = ServidorOperatingSystem.objects.all()
+            if self.value():
+                server = queryop.filter(so_id=self.value())
+                servidor_ids = [s.servidor_id for s in server]
+                return queryset.filter(id__in=servidor_ids)
+        except Exception as err:
+            print(f'ERROR FILTER SO: {err}')
+        return queryset
+    
 @admin.register(Servidor)
 class ServidorAdmin(admin.ModelAdmin):
     change_form_template = "infra/admin/change_form_servidor.html"
     delete_confirmation_template = "infra/admin/delete_confirmation_servidor.html"
     change_list_template  = "infra/admin/change_list_servidor.html"
     search_fields = ["nome", "patrimonio", "marca", "modelo", "descricao", "servicos", "grupos"]
-    list_filter = ["tipo_uso","tipo" ]
+    list_filter = [
+        "tipo_uso", 
+        "tipo", 
+        TenantsFilter,
+        OperatingSystemFilter
+    ]
     list_display = ("nome", "tipo", "tipo_uso",  "predio",  "descricao", "grupo", "status")
     fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", 'vm_remover']
     readonly_fields = ("status","conta")
@@ -307,7 +359,7 @@ class ServidorAdmin(admin.ModelAdmin):
             self.fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", "servicos"]
 
         self.readonly_fields = ("nome", "status", "conta", "tipo", "tipo_uso", "predio")
-        self.inlines = [HostnameIPServidorInLine, GrupoAcessoEquipamentoInLine, OcorrenciaInLine, ServicoNagiosInLine, TenantsInLine,]
+        self.inlines = [HostnameIPServidorInLine, GrupoAcessoEquipamentoInLine, OcorrenciaInLine, ServicoNagiosInLine, TenantsInLine, OperatingSystemInLine,]
         return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
     def save_formset(self, request, form, formset, change):

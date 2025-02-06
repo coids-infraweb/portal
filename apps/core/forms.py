@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.forms.models import ModelChoiceField
 
 from apps.colaborador.models import Colaborador
-from apps.core.models import Divisao, Tenants, GrupoTrabalho, ResponsavelGrupoTrabalho
+from apps.core.models import Divisao, OperatingSystem, Tenants, GrupoTrabalho, ResponsavelGrupoTrabalho
 from django.core.exceptions import ValidationError
 
 
@@ -39,6 +39,11 @@ class ResponsavelGrupoTrabalhoInLineForm(forms.ModelForm):
 class TenantsInLineForm(forms.ModelForm):
     class Meta:
         model = Tenants
+        fields = "__all__"
+
+class OperatingSystemInLineForm(forms.ModelForm):
+    class Meta:
+        model = OperatingSystem
         fields = "__all__"
 
 

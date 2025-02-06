@@ -2,7 +2,7 @@ import datetime
 
 from django.contrib.auth.models import Group
 from django.db import models
-from apps.core.managers import ColaboradorGrupoAcessoManager, DivisaoManager, GrupoAcessoManager, TenantsManager, GrupoTrabalhoManager, ResponsavelGrupoTrabalhoManager
+from apps.core.managers import ColaboradorGrupoAcessoManager, DivisaoManager, GrupoAcessoManager, OperatingSystemManager, TenantsManager, GrupoTrabalhoManager, ResponsavelGrupoTrabalhoManager
 
 
 class Predio(models.Model):
@@ -170,6 +170,26 @@ class ServidorTenants(models.Model):
 
     def __str__(self):
         return f"{self.tenant.tenants}"
+    
+class OperatingSystem(models.Model):
+    so = models.CharField(verbose_name='Sistema operacional', max_length=255)
+    objects = OperatingSystemManager()
+
+    class Meta:
+        verbose_name = "Sistema operacional"
+        verbose_name_plural = "Sistemas operacionais"
+
+    def __str__(self):
+        return f"{self.so}"
+
+class ServidorOperatingSystem(models.Model):
+    servidor = models.ForeignKey("infra.Servidor", on_delete=models.CASCADE)
+    so = models.ForeignKey("core.OperatingSystem", on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('servidor', 'so')
+        verbose_name = "Servidor operacional"
+        verbose_name_plural = "Servidores operacionais"
 
 
 class ResponsavelGrupoTrabalho(models.Model):
