@@ -43,6 +43,4 @@ urlpatterns = [
     path("sua", login_required(ColaboradorContaView.as_view()), name="conta"),
     path("vpn/<int:pk>/formulario/", login_required(VPNFormularioView.as_view()), name="vpn_formulario"),
     path("externo/", login_required(ColaboradorExternoView.as_view()), name="externo"),
-    
-    
 ]

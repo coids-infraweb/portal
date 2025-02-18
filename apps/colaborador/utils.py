@@ -1,14 +1,21 @@
 import random
 import string
+import datetime
 from builtins import range
-
 from django.contrib.admin.models import ADDITION, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.utils.encoding import force_str, force_text
 from django.utils.http import urlsafe_base64_decode
-
 from apps.colaborador.models import Colaborador
+import pandas as pd
+from io import BytesIO
+from django.http import HttpResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
 
 
 def gerar_password():
@@ -124,3 +131,88 @@ class HistoryColaborador:
             action_flag=ADDITION,
             change_message=(f"Solicitado acesso aos recursos do Grupo de Trabalho por {colaborador.full_name} "),
         )
+
+
+def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xlsx"):
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Dados"
+
+        ws.merge_cells('A1:{}1'.format(chr(65 + len(fields) - 1)))
+        title_cell = ws["A1"]
+        title_cell.value = title
+        title_cell.font = Font(size=14, bold=True, color="FFFFFF")
+        title_cell.alignment = Alignment(horizontal="center")
+        title_cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+
+        header_row = []
+        for field in fields:
+            header_row.append(field)
+        
+        ws.append(header_row)
+
+        for col_num, column_title in enumerate(header_row, 1):
+            cell = ws.cell(row=2, column=col_num, value=column_title)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+
+        for obj in queryset:
+            row = [getattr(obj, field, "") for field in fields]
+            ws.append(row)
+
+        for col in ws.iter_cols(min_row=2, max_row=ws.max_row):
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                if not isinstance(cell, type(ws.cell(row=1, column=1))):
+                    continue
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws.column_dimensions[col_letter].width = max_length + 2
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+
+        wb.save(response)
+        return response
+
+    except Exception as err:
+        print(f'Erro ao gerar o Excel: {err}')
+        return HttpResponse("Erro ao gerar o arquivo.", status=500)
+
+
+def export_to_pdf(queryset=None, fields=None, filename=None):
+    try:
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        
+        # ESSE CAMPO AQUI É OQ VAI CRIAR OS TITULOS DA TABELA, ENTÃO PODEMOS COLOCAR ELE NO FORMATO DENTRO DE LISTAS E DESSA MANEIRA
+        # ['NOME', 'ENDEREÇO', 'EMAIL', 'RAMAL', 'VINCULO'] ---> EXEMPLO
+        data = [fields]
+        
+        for colaborador in queryset:
+            row = [getattr(colaborador, field) for field in fields]
+            data.append(row)
+        
+        table = Table(data)
+        
+        style = TableStyle([
+            ('TEXTCOLOR', (0, 0), (-1, 0), (0, 0, 0)),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('SIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, (0, 0, 0)),
+            ('BACKGROUND', (0, 0), (-1, 0), (0.8, 0.8, 0.8)),
+        ])
+        table.setStyle(style)
+        doc.build([table])
+        return response
+    except Exception as err:
+        print(f'CARA DE ERRO AQUI VEY: {err}')
+        return None

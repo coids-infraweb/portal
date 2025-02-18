@@ -17,10 +17,9 @@ from django.views.generic import DetailView
 from django.views.generic.base import RedirectView, TemplateView, View
 from django.views.generic.edit import CreateView, FormView, UpdateView
 from xhtml2pdf import pisa
-
 from apps.colaborador.forms import  ColaboradorExternoForm, ColaboradorForm, ResponsavelNegarForm, SecretariaNegarForm, SuporteForm
 from apps.colaborador.models import Colaborador, VPN
-from apps.colaborador.utils import HistoryColaborador, gerar_password, get_user
+from apps.colaborador.utils import HistoryColaborador, export_to_xlsx, export_to_pdf, gerar_password, get_user
 from apps.core.models import ColaboradorGrupoAcesso, Divisao, GrupoAcesso, GrupoTrabalho
 from apps.core.tasks import send_email_template_task
 from apps.core.utils.freeipa import FreeIPA
@@ -369,3 +368,11 @@ class ColaboradorExternoView(ViewContextMixin, LoginRequiredMixin, PermissionReq
         send_email_template_task.delay(f"Instruções para preenchimento dos formulários","colaborador/email/colaborador_externo.html", [self.email], {})
         messages.add_message(self.request, messages.SUCCESS, "Email com instruções para preenchimento de abertura de conta foi enviado!!")
         return reverse_lazy("admin:colaborador_vpn_changelist")
+
+def export_colaboradores_to_excel(request):
+    queryset = Colaborador.objects.all()
+    return export_to_xlsx(queryset, fields=["full_name", "email", "ramal"], title="Relatório de Colaboradores", filename="coleaboradores.xlsx")
+
+def export_colaboradores_to_pdf(request):
+    queryset = Colaborador.objects.all()
+    return export_to_pdf(queryset=queryset, fields=["full_name", "email", "ramal", "vinculo"], filename="colaeboradores__.pdf")
