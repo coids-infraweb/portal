@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.staticfiles import finders
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import get_template
 from django.urls import reverse_lazy
 from django.utils.encoding import force_bytes
@@ -369,10 +369,28 @@ class ColaboradorExternoView(ViewContextMixin, LoginRequiredMixin, PermissionReq
         messages.add_message(self.request, messages.SUCCESS, "Email com instruções para preenchimento de abertura de conta foi enviado!!")
         return reverse_lazy("admin:colaborador_vpn_changelist")
 
+# Exportar colaboradores
 def export_colaboradores_to_excel(request):
     queryset = Colaborador.objects.all()
-    return export_to_xlsx(queryset, fields=["full_name", "email", "ramal"], title="Relatório de Colaboradores", filename="coleaboradores.xlsx")
+    return export_to_xlsx(queryset, fields=["full_name", "email", "ramal"], title="Relatório de Colaboradores", filename="colaboradores.xlsx")
 
 def export_colaboradores_to_pdf(request):
     queryset = Colaborador.objects.all()
-    return export_to_pdf(queryset=queryset, fields=["full_name", "email", "ramal", "vinculo"], filename="colaeboradores__.pdf")
+    page_title = "Relatório de Colaboradores"
+    return export_to_pdf(queryset=queryset, fields=["username", "full_name", "email", "ramal", "vinculo"], filename="colaboradores__.pdf", page_title=page_title)
+
+# Exportar vpn
+def export_vpn_to_excel(request):
+    queryset = VPN.objects.all()
+    return export_to_xlsx(queryset, fields=["colaborador", "recurso", "status"], title="Relatório de VPNs", filename="vpn.xlsx")
+
+def export_vpn_to_pdf(request):
+    queryset = VPN.objects.all()
+    page_title = "Relatório de VPNs"
+    return export_to_pdf(queryset=queryset, fields=["colaborador", "recurso", "status"], filename="vpn__.pdf", page_title=page_title)
+
+# Exportar Divisões | Coordenações
+def export_divisao_to_pdf(request):
+    queryset = Divisao.objects.all()
+    page_title = "Relatório de Divisões"
+    return export_to_pdf(queryset=queryset, fields=["divisao", "email", "chefe", "chefe_substituto"], filename="divisao__.pdf", page_title=page_title)

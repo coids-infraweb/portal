@@ -14,8 +14,12 @@ from django.http import HttpResponse
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.lib import colors
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
+
 
 
 def gerar_password():
@@ -132,6 +136,22 @@ class HistoryColaborador:
             change_message=(f"Solicitado acesso aos recursos do Grupo de Trabalho por {colaborador.full_name} "),
         )
 
+def add_header(canvas, doc, title):
+    canvas.saveState()
+    canvas.setFont('Helvetica-Bold', 12)
+
+    header_text = title  
+    image_path = "static/image/logo-coids.png"
+    text_width = canvas.stringWidth(header_text, 'Helvetica-Bold', 12)
+    x_position = (letter[0] - text_width) / 2
+
+    image_width = 2 * cm
+    image_height = 2 * cm    
+    canvas.drawImage(image_path, 1 * cm, letter[1] - 2.5 * cm, width=image_width, height=image_height, preserveAspectRatio=True)
+
+    canvas.drawString(x_position, letter[1] - 1.5 * cm, header_text)
+
+    canvas.restoreState()
 
 def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xlsx"):
     try:
@@ -186,33 +206,43 @@ def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xls
         return HttpResponse("Erro ao gerar o arquivo.", status=500)
 
 
-def export_to_pdf(queryset=None, fields=None, filename=None):
+def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
     try:
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename={filename}'
         
+        title = page_title if page_title else "Dados exportados para PDF"
+
         doc = SimpleDocTemplate(response, pagesize=letter)
-        
+ 
         # ESSE CAMPO AQUI É OQ VAI CRIAR OS TITULOS DA TABELA, ENTÃO PODEMOS COLOCAR ELE NO FORMATO DENTRO DE LISTAS E DESSA MANEIRA
         # ['NOME', 'ENDEREÇO', 'EMAIL', 'RAMAL', 'VINCULO'] ---> EXEMPLO
         data = [fields]
         
-        for colaborador in queryset:
-            row = [getattr(colaborador, field) for field in fields]
+        for obj in queryset:
+            row = [getattr(obj, field, '-') if getattr(obj, field, None) not in [None, ""] else '-' for field in fields]
             data.append(row)
         
         table = Table(data)
         
         style = TableStyle([
-            ('TEXTCOLOR', (0, 0), (-1, 0), (0, 0, 0)),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('SIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (-1, 0), (1, 1, 1)),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('SIZE', (0, 0), (-1, -1), 9),
             ('GRID', (0, 0), (-1, -1), 0.5, (0, 0, 0)),
-            ('BACKGROUND', (0, 0), (-1, 0), (0.8, 0.8, 0.8)),
+            ('BACKGROUND', (0, 0), (-1, 0), '#0077BA'),
         ])
         table.setStyle(style)
-        doc.build([table])
+
+        # Adicionando o cabeçalho e a tabela ao documento
+        elements = []
+        elements.append(table)
+
+        doc.build(elements, onFirstPage=lambda c, d: add_header(c, d, title), onLaterPages=lambda c, d: add_header(c, d, title))
+
         return response
     except Exception as err:
         print(f'CARA DE ERRO AQUI VEY: {err}')
         return None
+
