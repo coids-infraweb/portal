@@ -453,6 +453,7 @@ class AmbienteVirtualAdmin(admin.ModelAdmin):
 
 @admin.register(Rede)
 class RedeAdmin(admin.ModelAdmin):
+    search_fields = ["rede", "ip"]
     list_display = ("rede", "ip", "prioridade_montagem")
 
 
