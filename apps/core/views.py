@@ -22,7 +22,7 @@ from apps.core.utils.freeipa import FreeIPA
 from apps.core.utils.history import HistoryCore
 from apps.core.utils.updategrupo import UpdateGrupoAcesso, UpdateColaboradorGrupo, UpdateGrupoVerificaDisco
 from garb.views import ViewContextMixin
-from apps.colaborador.utils import export_to_pdf
+from apps.colaborador.utils import export_to_pdf, export_to_xlsx
 
 
 class AtualizarAssinaturaView(LoginRequiredMixin, PermissionRequiredMixin, View):
@@ -128,6 +128,10 @@ class CoreStatusView(TemplateView):
         return context
 
 # Exportar grupos de acesso
+def export_grupoAcesso_to_excel(request):
+    queryset = GrupoAcesso.objects.all()
+    return export_to_xlsx(queryset, fields=["grupo_acesso", "grupo_trabalho", "hbac_freeipa", "tipo", "data"], title="Relatório de Grupos de Acesso", filename="grupoAcesso.xlsx")
+
 def export_grupoAcesso_to_pdf(request):
     queryset = GrupoAcesso.objects.all()
     page_title = "Relatório de Grupos de Acesso"

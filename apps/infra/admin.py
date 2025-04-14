@@ -19,6 +19,7 @@ from apps.infra.models import (AmbienteVirtual,
 from apps.infra.utils.freeipa_location import Automount
 from apps.infra.utils.history import HistoryInfra
 from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html
 
 class OcorrenciaInLine(admin.TabularInline):
     model = Ocorrencia
@@ -290,8 +291,8 @@ class OperatingSystemFilter(admin.SimpleListFilter):
         except Exception as err:
             print(f'ERROR FILTER SO: {err}')
         return queryset
-    
-@admin.register(Servidor)
+
+@admin.register(Servidor) #teste para inserir item datacenter
 class ServidorAdmin(admin.ModelAdmin):
     change_form_template = "infra/admin/change_form_servidor.html"
     delete_confirmation_template = "infra/admin/delete_confirmation_servidor.html"
@@ -303,15 +304,58 @@ class ServidorAdmin(admin.ModelAdmin):
         TenantsFilter,
         OperatingSystemFilter
     ]
-    list_display = ("nome", "tipo", "tipo_uso",  "predio",  "descricao", "grupo", "status")
-    fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", 'vm_remover']
+    list_display = ("nome", "tipo", "tipo_uso",  "datacenter",  "descricao", "grupo", "responsavel", "status")
+    fields = ["nome", "tipo", "tipo_uso", "datacenter", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", 'vm_remover']
     readonly_fields = ("status","conta")
     form = ServidorForm 
     inlines = [HostnameIPServidorInLine,]
-
+    
+    #Listar os grupos um em cada linha
     def grupo(self, obj):
-        return obj.grupo_acesso_name()
+        grupos = obj.grupo_acesso_name().split(" | ")
+        if not grupos:
+            return "-"
+        
+        primeiro_grupo = grupos[0]
+        grupos_extras = grupos[1:]
+        
+        html = format_html('<div>{}</div>', primeiro_grupo)
+        for grupo in grupos_extras:
+            html += format_html('<div style="margin-top: 0px;">{}</div>', grupo)
+        
+        return html
     grupo.short_description = "Grupo"
+
+    # Coluna responsável
+    def responsavel(self, obj):
+        grupos_acesso = obj.grupos_acesso.all()
+        if not grupos_acesso.exists():
+            return "-"
+        
+        responsaveis_por_grupo = []
+        
+        for grupo_acesso in grupos_acesso:
+            # Acessa o GrupoTrabalho relacionado
+            grupo_trabalho = grupo_acesso.grupo_trabalho
+            
+            # Obtém todos os responsáveis desse grupo
+            responsaveis = grupo_trabalho.responsavel.all()
+            
+            if responsaveis.exists():
+                # Formata os nomes dos responsáveis
+                nomes = [f"{resp.first_name} {resp.last_name}" for resp in responsaveis]
+                responsaveis_por_grupo.append(
+                    f"{', '.join(nomes)}"
+                )
+            else:
+                responsaveis_por_grupo.append(
+                    f"{grupo_trabalho.grupo}: Sem responsável definido"
+                )
+        
+        return format_html("<br>".join(responsaveis_por_grupo))
+
+    responsavel.short_description = "Responsável"
+    responsavel.allow_tags = True
 
     def save_model(self, request, obj, form, change):
         hostname_str = obj.nome.split(" | ")
@@ -345,18 +389,18 @@ class ServidorAdmin(admin.ModelAdmin):
     def add_view(self, request, form_url="", extra_context=None):
         extra_context = dict( show_save=False, show_save_and_continue=True)
         self.readonly_fields = ("status","conta")
-        self.fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", "servicos"]
+        self.fields = ["nome", "tipo", "tipo_uso", "datacenter", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", "servicos"]
         self.inlines = ()
         return super().add_view(request, form_url=form_url, extra_context=extra_context)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         servidor = get_object_or_404(Servidor, id=object_id)
         if servidor.tipo == 'Servidor Virtual' and  servidor.vm_ambiente_virtual:
-            self.fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "status", "conta", "vm_remover", "servicos"]
+            self.fields = ["nome", "tipo", "tipo_uso", "predio", "datacenter", "descricao", "status", "conta", "vm_remover", "servicos"]
         elif servidor.tipo == 'Servidor Virtual':
-            self.fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "status", "conta", "servicos"]
+            self.fields = ["nome", "tipo", "tipo_uso", "predio", "datacenter", "descricao", "status", "conta", "servicos"]
         else:
-            self.fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", "servicos"]
+            self.fields = ["nome", "tipo", "tipo_uso", "predio", "datacenter", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "conta", "servicos"]
 
         self.readonly_fields = ("nome", "status", "conta", "tipo", "tipo_uso", "predio")
         self.inlines = [HostnameIPServidorInLine, GrupoAcessoEquipamentoInLine, OcorrenciaInLine, ServicoNagiosInLine, TenantsInLine, OperatingSystemInLine,]

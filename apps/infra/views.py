@@ -29,7 +29,7 @@ from apps.infra.utils.freeipa_location import Automount
 from apps.infra.utils.history import HistoryInfra
 from apps.infra.utils.xen_crud import XenCrud
 from apps.monitoramento.models.nagios import NagiosServicos
-from apps.colaborador.utils import export_to_pdf
+from apps.colaborador.utils import export_to_pdf, export_to_xlsx
 from apps.infra.models import Storage, Servidor, Supercomputador, EquipamentoParte, AmbienteVirtual, TemplateVM, Rack, HostnameIP, Rede
 from django.db.models import Sum
 
@@ -255,12 +255,25 @@ class CriarVmProgressView(LoginRequiredMixin, TemplateView):
         context["task_id"] = self.kwargs['task_id'] 
         return context
 
-
-# Exportar Servidores
+#Exportar servidores
 def export_servidor_to_pdf(request):
     queryset = Servidor.objects.all()
     page_title = "Relatório de Servidores"
-    return export_to_pdf(queryset=queryset, fields=["nome", "tipo", "tipo_uso",  "predio", "status"], filename="servidores__.pdf", page_title=page_title)  
+    return export_to_pdf(
+        queryset=queryset, 
+        fields=["nome", "tipo", "tipo_uso", "datacenter", "grupo", "status"],
+        filename="servidores__.pdf",
+        page_title=page_title
+    )
+
+def export_servidor_to_excel(request):
+    queryset = Servidor.objects.all()
+    return export_to_xlsx(
+        queryset, 
+        fields=["nome", "tipo", "tipo_uso", "datacenter", "descricao", "grupo", "responsavel", "status"],
+        title="Relatório de Servidores",
+        filename="servidores.xlsx"
+    )
 
 # Exportar Storages
 def export_storages_to_pdf(request):
@@ -273,6 +286,14 @@ def export_storages_to_pdf(request):
         processed_queryset.append(storage)
     return export_to_pdf(queryset=processed_queryset, fields=["marca", "modelo", "descricao", "capacidade_value"], filename="storages.pdf", page_title=page_title)
 
+def export_storages_to_excel(request):
+    queryset = Storage.objects.all()
+    processed_queryset = []
+    for storage in queryset:
+        storage.capacidade_value = f"{storage.capacidade():.2f}"  
+        processed_queryset.append(storage)
+    return export_to_xlsx(queryset, fields=["marca", "modelo", "descricao", "capacidade_value"], title="Relatório de Storages", filename="storages.xlsx")
+
 
 # Exportar Supercomputador
 def export_supercomputador_to_pdf(request):
@@ -280,11 +301,19 @@ def export_supercomputador_to_pdf(request):
     page_title = "Relatório de Supercomputadores"
     return export_to_pdf(queryset=queryset, fields=["marca", "modelo", "kafka_topico_realtime", "kafka_topico_historico"], filename="supercomputador__.pdf", page_title=page_title)
 
+def export_supercomputador_to_excel(request):
+    queryset = Supercomputador.objects.all()
+    return export_to_xlsx(queryset, fields=["marca", "modelo", "kafka_topico_realtime", "kafka_topico_historico"], title="Relatório de Supercomputadores", filename="supercomputador.xlsx")
+
 # Exportar Partes de Equipamento
 def export_partes_equipamento_to_pdf(request):
     queryset = EquipamentoParte.objects.all()
     page_title = "Relatório de Partes de Equipamento"
     return export_to_pdf(queryset=queryset, fields=["patrimonio", "marca", "modelo", "vinculado", "status"], filename="partes_equipamento__.pdf", page_title=page_title)
+
+def export_partes_equipamento_to_excel(request):
+    queryset = EquipamentoParte.objects.all()
+    return export_to_xlsx(queryset, fields=["patrimonio", "marca", "modelo", "vinculado", "status"], title="Relatório de Partes de Equipamento", filename="partes_equipamento.xlsx")
 
 # Exportar Ambiente virtual
 def export_ambiente_virtual_to_pdf(request):
@@ -292,11 +321,19 @@ def export_ambiente_virtual_to_pdf(request):
     page_title = "Relatório de Ambientes Virtuais"
     return export_to_pdf(queryset=queryset, fields=["nome", "virtualizador", "versao", "status"], filename="ambiente_virtual__.pdf", page_title=page_title)
 
+def export_ambiente_virtual_to_excel(request):
+    queryset = AmbienteVirtual.objects.all()
+    return export_to_xlsx(queryset, fields=["nome", "virtualizador", "versao", "status"], title="Relatório de Ambientes Virtuais", filename="ambiente_virtual.xlsx")
+
 # Exportar Templates
 def export_templates_to_pdf(request):
     queryset = TemplateVM.objects.all()
     page_title = "Relatório de Templates"
     return export_to_pdf(queryset=queryset, fields=["nome", "configuracao", "ambiente_virtual"], filename="templates__.pdf", page_title=page_title)
+
+def export_templates_to_excel(request):
+    queryset = TemplateVM.objects.all()
+    return export_to_xlsx(queryset, fields=["nome", "configuracao", "ambiente_virtual"], title="Relatório de Templates", filename="templates.xlsx")
 
 # Exportar Racks
 def export_racks_to_pdf(request):
@@ -308,9 +345,24 @@ def export_racks_to_pdf(request):
     for rack in queryset:
         setattr(rack, "Qtd. Eqp.", rack.equipamento_set.count())
         consumo_total = rack.equipamento_set.aggregate(Sum("consumo"))["consumo__sum"]
-        setattr(rack, "Consumo Eqp.", consumo_total if consumo_total is not None else 0)
+        setattr(rack, "Consumo Eqp.", consumo_total if consumo_total is not None else "-")
         processed_queryset.append(rack)
     return export_to_pdf(queryset=processed_queryset, fields=fields, filename="racks__.pdf", page_title=page_title)
+
+def export_racks_to_excel(request):
+    queryset = Rack.objects.all()
+    fields=["rack", "Qtd. Eqp.", "predio", "consumo", "Consumo Eqp.", "pdu1", "pdu2"]
+    page_title = "Relatório de Racks"
+
+    processed_queryset = []
+    for rack in queryset:
+        setattr(rack, "Qtd. Eqp.", rack.equipamento_set.count())
+        consumo_total = rack.equipamento_set.aggregate(Sum("consumo"))["consumo__sum"]
+        setattr(rack, "Consumo Eqp.", consumo_total if consumo_total is not None else "-")
+
+        processed_queryset.append(rack)
+
+    return export_to_xlsx(queryset=processed_queryset, fields=fields, title=page_title, filename="racks.xlsx")
 
 # Exportar HostnameIP
 def export_hostnameip_to_pdf(request):
@@ -318,8 +370,16 @@ def export_hostnameip_to_pdf(request):
     page_title = "Relatório de Hostname e IPs"
     return export_to_pdf(queryset=queryset, fields=["hostname", "ip", "reservado"], filename="hostnames-ips__.pdf", page_title=page_title)
 
+def export_hostnameip_to_excel(request):
+    queryset = HostnameIP.objects.all()
+    return export_to_xlsx(queryset, fields=["hostname", "ip", "reservado"], title="Relatório de Hostname e IPs", filename="hostnames-ips.xlsx")
+
 # Exportar Rede
 def export_rede_to_pdf(request):
     queryset = Rede.objects.all()
     page_title = "Relatório de Redes"
     return export_to_pdf(queryset=queryset, fields=["rede", "ip", "prioridade_montagem"], filename="redes__.pdf", page_title=page_title)
+
+def export_rede_to_excel(request):
+    queryset = Rede.objects.all()
+    return export_to_xlsx(queryset, fields=["rede", "ip", "prioridade_montagem"], title="Relatório de Redes", filename="redes.xlsx")

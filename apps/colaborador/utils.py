@@ -18,9 +18,12 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
-
-
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
+import os
+from django.conf import settings
+from PIL import Image as PILImage
 
 def gerar_password():
     password = ""
@@ -153,57 +156,123 @@ def add_header(canvas, doc, title):
 
     canvas.restoreState()
 
+
 def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xlsx"):
     try:
         wb = Workbook()
         ws = wb.active
         ws.title = "Dados"
-
-        ws.merge_cells('A1:{}1'.format(chr(65 + len(fields) - 1)))
-        title_cell = ws["A1"]
-        title_cell.value = title
-        title_cell.font = Font(size=14, bold=True, color="FFFFFF")
-        title_cell.alignment = Alignment(horizontal="center")
-        title_cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-
-        header_row = []
-        for field in fields:
-            header_row.append(field)
         
-        ws.append(header_row)
+        blue_fill = PatternFill(start_color="0077BA", end_color="0077BA", fill_type="solid")
+        white_font = Font(name="Arial", color="FFFFFF", bold=True)
+        thin_border = Border(bottom=Side(style='thin', color='000000'))
+        
+        title_font = Font(name='Arial', size=14, bold=True)
+        header_font = Font(name='Arial', size=12, bold=True)
+        data_font = Font(name='Arial', size=10)
 
-        for col_num, column_title in enumerate(header_row, 1):
-            cell = ws.cell(row=2, column=col_num, value=column_title)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center")
+        last_col = get_column_letter(len(fields))
+        ws.merge_cells(f'A1:{last_col}1')
+        ws.row_dimensions[1].height = 50  
+        
+        try:
+            img_path = os.path.join(settings.BASE_DIR, 'static/image/logo-coids.png')
+            pil_img = PILImage.open(img_path)
+            pil_img.thumbnail((240, 60))  # Redimensionar logo
+            
+            img_io = BytesIO()
+            pil_img.save(img_io, format='PNG')
+            img_io.seek(0)
+            
+            excel_img = Image(img_io)
+            ws.add_image(excel_img, 'A1')
+        except Exception as e:
+            print(f"Erro ao adicionar logo: {e}")
+            ws['A1'] = "LOGO"
+            ws['A1'].font = title_font
 
-        for obj in queryset:
-            row = [getattr(obj, field, "") for field in fields]
-            ws.append(row)
+        ws['A1'].value = title
+        ws['A1'].font = title_font
+        ws['A1'].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-        for col in ws.iter_cols(min_row=2, max_row=ws.max_row):
-            max_length = 0
-            col_letter = col[0].column_letter
-            for cell in col:
-                if not isinstance(cell, type(ws.cell(row=1, column=1))):
-                    continue
-                try:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                except:
-                    pass
-            ws.column_dimensions[col_letter].width = max_length + 2
+        for col_num, field in enumerate(fields, 1):
+            cell = ws.cell(row=2, column=col_num, value=field)
+            cell.font = white_font
+            cell.fill = blue_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = thin_border
 
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename={filename}'
+        for row_num, obj in enumerate(queryset, 3):
+            max_lines_in_row = 1  # Altura mínima da linha
+            
+            # Primeiro, verifica todas as células para definir a altura máxima da linha
+            for col_num, field in enumerate(fields, 1):
+                value = getattr(obj, field, "")
+                cell_value = str(value) if value not in [None, ""] else "-"
+                
+                # Conta quantas quebras de linha existem (+1 porque cada '\n' significa uma nova linha)
+                line_breaks = cell_value.count('\n') + 1
+                
+                # Se tiver mais de 100 caracteres, calcula quantas linhas seriam necessárias
+                if len(cell_value) > 100:
+                    wrapped_lines = (len(cell_value) // 100) + 1
+                    line_breaks = max(line_breaks, wrapped_lines)
+                
+                # Atualiza a altura máxima da linha
+                if line_breaks > max_lines_in_row:
+                    max_lines_in_row = line_breaks
+            
+            # Define a altura da linha (15 pixels por linha)
+            ws.row_dimensions[row_num].height = 15 * max_lines_in_row
+            
+            # Agora preenche as células
+            for col_num, field in enumerate(fields, 1):
+                value = getattr(obj, field, "")
+                cell_value = str(value) if value not in [None, ""] else "-"
+                
+                cell = ws.cell(row=row_num, column=col_num, value=cell_value)
+                cell.font = data_font
+                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
+        max_width = 80  
+        min_width = 20  
+
+        for column in ws.columns:
+            col_letter = get_column_letter(column[0].column)
+            field_name = fields[column[0].column - 1] if column[0].column <= len(fields) else None
+            
+            # Tratamento especial para coluna 'grupo'
+            if field_name == 'grupo':
+                max_length = 0
+                for cell in column:
+                    if cell.value and cell.value != '-':
+                        # Pega o maior grupo individual (considerando quebras)
+                        groups = str(cell.value).split('\n') if '\n' in str(cell.value) else [str(cell.value)]
+                        max_group_length = max(len(group.strip()) for group in groups)
+                        max_length = max(max_length, max_group_length)
+                
+                adjusted_width = min(max(20, max_length * 1.1), 40)  # Limite entre 20 e 40
+                ws.column_dimensions[col_letter].width = adjusted_width
+                continue
+            
+            # Cálculo normal para outras colunas
+            max_length = max(
+                (len(str(cell.value or "")) for cell in column),
+                default=min_width
+            )
+            adjusted_width = min(max(min_width, max_length * 1.1), max_width)
+            ws.column_dimensions[col_letter].width = adjusted_width
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+        )
         wb.save(response)
         return response
 
     except Exception as err:
-        print(f'Erro ao gerar o Excel: {err}')
-        return HttpResponse("Erro ao gerar o arquivo.", status=500)
+        print(f'Erro ao gerar Excel: {str(err)}')
+        return HttpResponse(f"Erro ao gerar arquivo: {str(err)}", status=500)
 
 
 def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
@@ -226,12 +295,18 @@ def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
         table = Table(data)
         
         style = TableStyle([
-            ('TEXTCOLOR', (0, 0), (-1, 0), (1, 1, 1)),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('SIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, (0, 0, 0)),
+            # Cabeçalho
             ('BACKGROUND', (0, 0), (-1, 0), '#0077BA'),
+            ('TEXTCOLOR', (0, 0), (-1, 0), (1, 1, 1)),  # Branco
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            
+            # Corpo da tabela
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),  # Alinhamento horizontal
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Alinhamento vertical centralizado
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            
+            # Bordas
+            ('GRID', (0, 0), (-1, -1), 0.5, (0, 0, 0)),
         ])
         table.setStyle(style)
 
