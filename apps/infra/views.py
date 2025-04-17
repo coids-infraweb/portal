@@ -255,13 +255,20 @@ class CriarVmProgressView(LoginRequiredMixin, TemplateView):
         context["task_id"] = self.kwargs['task_id'] 
         return context
 
-#Exportar servidores
+# Exportar servidores
 def export_servidor_to_pdf(request):
     queryset = Servidor.objects.all()
     page_title = "Relatório de Servidores"
     return export_to_pdf(
-        queryset=queryset, 
-        fields=["nome", "tipo", "tipo_uso", "datacenter", "grupo", "status"],
+        queryset=queryset,
+        fields={
+            "nome": "Nome",
+            "tipo": "Tipo",
+            "tipo_uso": "Tipo de Uso",
+            "datacenter": "Data Center",
+            "grupo": "Grupo",
+            "responsavel_grupo": "Responsável Grupo"
+        },
         filename="servidores__.pdf",
         page_title=page_title
     )
@@ -269,30 +276,64 @@ def export_servidor_to_pdf(request):
 def export_servidor_to_excel(request):
     queryset = Servidor.objects.all()
     return export_to_xlsx(
-        queryset, 
-        fields=["nome", "tipo", "tipo_uso", "datacenter", "descricao", "grupo", "responsavel", "status"],
+        queryset,
+        fields={
+            "nome": "Nome",
+            "tipo": "Tipo",
+            "tipo_uso": "Tipo de Uso",
+            "datacenter": "Data Center",
+            "descricao": "Descrição",
+            "grupo": "Grupo",
+            "responsavel": "Responsável",
+            "status": "Status"
+        },
         title="Relatório de Servidores",
         filename="servidores.xlsx"
     )
+
 
 # Exportar Storages
 def export_storages_to_pdf(request):
     queryset = Storage.objects.all()
     page_title = "Relatório de Storages"
-    fields = ["marca", "modelo", "descricao", "capacidade"]
     processed_queryset = []
+
     for storage in queryset:
-        storage.capacidade_value = f"{storage.capacidade():.2f}"  
+        storage.capacidade_value = f"{storage.capacidade():.2f}"
         processed_queryset.append(storage)
-    return export_to_pdf(queryset=processed_queryset, fields=["marca", "modelo", "descricao", "capacidade_value"], filename="storages.pdf", page_title=page_title)
+
+    return export_to_pdf(
+        queryset=processed_queryset,
+        fields={
+            "marca": "Marca",
+            "modelo": "Modelo",
+            "descricao": "Descrição",
+            "capacidade_value": "Capacidade"
+        },
+        filename="storages.pdf",
+        page_title=page_title
+    )
 
 def export_storages_to_excel(request):
     queryset = Storage.objects.all()
     processed_queryset = []
+    
     for storage in queryset:
         storage.capacidade_value = f"{storage.capacidade():.2f}"  
         processed_queryset.append(storage)
-    return export_to_xlsx(queryset, fields=["marca", "modelo", "descricao", "capacidade_value"], title="Relatório de Storages", filename="storages.xlsx")
+    
+    return export_to_xlsx(
+        queryset=processed_queryset,
+        fields={
+            "marca": "Marca",
+            "modelo": "Modelo",
+            "descricao": "Descrição",
+            "capacidade_value": "Capacidade"
+        },
+        title="Relatório de Storages",
+        filename="storages.xlsx"
+    )
+
 
 
 # Exportar Supercomputador
@@ -339,19 +380,30 @@ def export_templates_to_excel(request):
 def export_racks_to_pdf(request):
     queryset = Rack.objects.all()
     page_title = "Relatório de Racks"
-    fields = ["rack", "Qtd. Eqp.", "consumo", "Consumo Eqp.", "pdu1", "pdu2"]
-    
     processed_queryset = []
+
     for rack in queryset:
-        setattr(rack, "Qtd. Eqp.", rack.equipamento_set.count())
+        rack.qtd_equip = rack.equipamento_set.count()
         consumo_total = rack.equipamento_set.aggregate(Sum("consumo"))["consumo__sum"]
-        setattr(rack, "Consumo Eqp.", consumo_total if consumo_total is not None else "-")
+        rack.consumo_eqp = consumo_total if consumo_total is not None else "-"
         processed_queryset.append(rack)
-    return export_to_pdf(queryset=processed_queryset, fields=fields, filename="racks__.pdf", page_title=page_title)
+
+    return export_to_pdf(
+        queryset=processed_queryset,
+        fields={
+            "rack": "Rack",
+            "qtd_equip": "Qtd. Eqp.",
+            "consumo": "Consumo Limite",
+            "consumo_eqp": "Consumo Eqp.",
+            "pdu1": "Primeiro PDU",
+            "pdu2": "Segundo PDU"
+        },
+        filename="racks__.pdf",
+        page_title=page_title
+    )
 
 def export_racks_to_excel(request):
     queryset = Rack.objects.all()
-    fields=["rack", "Qtd. Eqp.", "predio", "consumo", "Consumo Eqp.", "pdu1", "pdu2"]
     page_title = "Relatório de Racks"
 
     processed_queryset = []
@@ -359,10 +411,23 @@ def export_racks_to_excel(request):
         setattr(rack, "Qtd. Eqp.", rack.equipamento_set.count())
         consumo_total = rack.equipamento_set.aggregate(Sum("consumo"))["consumo__sum"]
         setattr(rack, "Consumo Eqp.", consumo_total if consumo_total is not None else "-")
-
         processed_queryset.append(rack)
 
-    return export_to_xlsx(queryset=processed_queryset, fields=fields, title=page_title, filename="racks.xlsx")
+    return export_to_xlsx(
+        queryset=processed_queryset,
+        fields={
+            "rack": "Rack",
+            "Qtd. Eqp.": "Qtd. Equipamentos",
+            "predio": "Prédio",
+            "consumo": "Consumo Limite",
+            "Consumo Eqp.": "Consumo dos Equipamentos",
+            "pdu1": "Primeiro PDU",
+            "pdu2": "Segundo PDU"
+        },
+        title=page_title,
+        filename="racks.xlsx"
+    )
+
 
 # Exportar HostnameIP
 def export_hostnameip_to_pdf(request):

@@ -292,7 +292,7 @@ class OperatingSystemFilter(admin.SimpleListFilter):
             print(f'ERROR FILTER SO: {err}')
         return queryset
 
-@admin.register(Servidor) #teste para inserir item datacenter
+@admin.register(Servidor)
 class ServidorAdmin(admin.ModelAdmin):
     change_form_template = "infra/admin/change_form_servidor.html"
     delete_confirmation_template = "infra/admin/delete_confirmation_servidor.html"

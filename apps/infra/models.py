@@ -316,6 +316,26 @@ class Servidor(Equipamento):
             responsaveis.append(", ".join(nomes) if nomes else f"{grupo_trabalho.grupo}: Sem responsável")
         
         return "\n".join(responsaveis)
+    
+    @property
+    def responsavel_grupo(self):
+        grupos_acesso = self.grupos_acesso.all()
+        if not grupos_acesso.exists():
+            return "-"
+        
+        responsaveis = []
+        for grupo_acesso in grupos_acesso:
+            grupo_trabalho = grupo_acesso.grupo_trabalho
+            nomes = []
+            for resp in grupo_trabalho.responsavel.all():
+                primeiro_nome = resp.first_name.split()[0] if resp.first_name else ""
+                sobrenome_inicial = f"{resp.last_name[0]}." if resp.last_name else ""
+                nome_abreviado = f"{primeiro_nome} {sobrenome_inicial}".strip()
+                nomes.append(nome_abreviado)
+            
+            responsaveis.append(", ".join(nomes) if nomes else f"{grupo_trabalho.grupo}: Sem responsável")
+        
+        return "\n".join(responsaveis)
 
 class TemplateVM(models.Model):
     nome = models.CharField("nome", max_length=255, blank=True, null=True)

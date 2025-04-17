@@ -372,12 +372,36 @@ class ColaboradorExternoView(ViewContextMixin, LoginRequiredMixin, PermissionReq
 # Exportar colaboradores
 def export_colaboradores_to_excel(request):
     queryset = Colaborador.objects.all()
-    return export_to_xlsx(queryset, fields=["username", "full_name", "email", "ramal", "vinculo", "is_active"], title="Relatório de Colaboradores", filename="colaboradores.xlsx")
+    return export_to_xlsx(
+        queryset,
+        fields={
+            "username": "Usuário",
+            "full_name": "Nome Completo",
+            "email": "E-mail",
+            "ramal": "Ramal",
+            "vinculo": "Vínculo",
+            "is_active": "Ativo"
+        },
+        title="Relatório de Colaboradores",
+        filename="colaboradores.xlsx"
+    )
 
 def export_colaboradores_to_pdf(request):
     queryset = Colaborador.objects.all()
     page_title = "Relatório de Colaboradores"
-    return export_to_pdf(queryset=queryset, fields=["username", "full_name", "email", "ramal", "vinculo"], filename="colaboradores__.pdf", page_title=page_title)
+    return export_to_pdf(
+        queryset=queryset,
+        fields={
+            "username": "Usuário",
+            "full_name": "Nome Completo",
+            "email": "Email",
+            "ramal": "Ramal",
+            "vinculo": "Vínculo"
+        },
+        filename="colaboradores__.pdf",
+        page_title=page_title
+    )
+
 
 # Exportar vpn
 def export_vpn_to_excel(request):
@@ -396,5 +420,5 @@ def export_divisao_to_excel(request):
 
 def export_divisao_to_pdf(request):
     queryset = Divisao.objects.all()
-    page_title = "Relatório de Divisões"
+    page_title = "Relatório de Divisões | Coordenações"
     return export_to_pdf(queryset=queryset, fields=["divisao", "email", "chefe", "chefe_substituto"], filename="divisao__.pdf", page_title=page_title)

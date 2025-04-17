@@ -162,28 +162,35 @@ def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xls
         wb = Workbook()
         ws = wb.active
         ws.title = "Dados"
-        
+
         blue_fill = PatternFill(start_color="0077BA", end_color="0077BA", fill_type="solid")
         white_font = Font(name="Arial", color="FFFFFF", bold=True)
         thin_border = Border(bottom=Side(style='thin', color='000000'))
-        
+
         title_font = Font(name='Arial', size=14, bold=True)
         header_font = Font(name='Arial', size=12, bold=True)
         data_font = Font(name='Arial', size=10)
 
-        last_col = get_column_letter(len(fields))
+        # Suporta dict de campos: {"campo": "Título"}
+        if isinstance(fields, dict):
+            field_names = list(fields.keys())
+            header = list(fields.values())
+        else:
+            field_names = fields
+            model = queryset.model
+            header = [model._meta.get_field(f).verbose_name.capitalize() for f in fields]
+
+        last_col = get_column_letter(len(field_names))
         ws.merge_cells(f'A1:{last_col}1')
-        ws.row_dimensions[1].height = 50  
-        
+        ws.row_dimensions[1].height = 50
+
         try:
             img_path = os.path.join(settings.BASE_DIR, 'static/image/logo-coids.png')
             pil_img = PILImage.open(img_path)
-            pil_img.thumbnail((240, 60))  # Redimensionar logo
-            
+            pil_img.thumbnail((240, 60))
             img_io = BytesIO()
             pil_img.save(img_io, format='PNG')
             img_io.seek(0)
-            
             excel_img = Image(img_io)
             ws.add_image(excel_img, 'A1')
         except Exception as e:
@@ -195,67 +202,50 @@ def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xls
         ws['A1'].font = title_font
         ws['A1'].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-        for col_num, field in enumerate(fields, 1):
-            cell = ws.cell(row=2, column=col_num, value=field)
+        for col_num, label in enumerate(header, 1):
+            cell = ws.cell(row=2, column=col_num, value=label)
             cell.font = white_font
             cell.fill = blue_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = Alignment(horizontal="left", vertical="center")
             cell.border = thin_border
 
         for row_num, obj in enumerate(queryset, 3):
-            max_lines_in_row = 1  # Altura mínima da linha
-            
-            # Primeiro, verifica todas as células para definir a altura máxima da linha
-            for col_num, field in enumerate(fields, 1):
+            max_lines_in_row = 1
+            for col_num, field in enumerate(field_names, 1):
                 value = getattr(obj, field, "")
                 cell_value = str(value) if value not in [None, ""] else "-"
-                
-                # Conta quantas quebras de linha existem (+1 porque cada '\n' significa uma nova linha)
                 line_breaks = cell_value.count('\n') + 1
-                
-                # Se tiver mais de 100 caracteres, calcula quantas linhas seriam necessárias
                 if len(cell_value) > 100:
                     wrapped_lines = (len(cell_value) // 100) + 1
                     line_breaks = max(line_breaks, wrapped_lines)
-                
-                # Atualiza a altura máxima da linha
-                if line_breaks > max_lines_in_row:
-                    max_lines_in_row = line_breaks
-            
-            # Define a altura da linha (15 pixels por linha)
+                max_lines_in_row = max(max_lines_in_row, line_breaks)
+
             ws.row_dimensions[row_num].height = 15 * max_lines_in_row
-            
-            # Agora preenche as células
-            for col_num, field in enumerate(fields, 1):
+
+            for col_num, field in enumerate(field_names, 1):
                 value = getattr(obj, field, "")
                 cell_value = str(value) if value not in [None, ""] else "-"
-                
                 cell = ws.cell(row=row_num, column=col_num, value=cell_value)
                 cell.font = data_font
                 cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-        max_width = 80  
-        min_width = 20  
-
+        max_width = 80
+        min_width = 20
         for column in ws.columns:
             col_letter = get_column_letter(column[0].column)
-            field_name = fields[column[0].column - 1] if column[0].column <= len(fields) else None
-            
-            # Tratamento especial para coluna 'grupo'
+            field_name = field_names[column[0].column - 1] if column[0].column <= len(field_names) else None
+
             if field_name == 'grupo':
                 max_length = 0
                 for cell in column:
                     if cell.value and cell.value != '-':
-                        # Pega o maior grupo individual (considerando quebras)
                         groups = str(cell.value).split('\n') if '\n' in str(cell.value) else [str(cell.value)]
                         max_group_length = max(len(group.strip()) for group in groups)
                         max_length = max(max_length, max_group_length)
-                
-                adjusted_width = min(max(20, max_length * 1.1), 40)  # Limite entre 20 e 40
+                adjusted_width = min(max(20, max_length * 1.1), 40)
                 ws.column_dimensions[col_letter].width = adjusted_width
                 continue
-            
-            # Cálculo normal para outras colunas
+
             max_length = max(
                 (len(str(cell.value or "")) for cell in column),
                 default=min_width
@@ -279,45 +269,58 @@ def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
     try:
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename={filename}'
-        
-        title = page_title if page_title else "Dados exportados para PDF"
-
+        title = page_title or "Dados exportados para PDF"
         doc = SimpleDocTemplate(response, pagesize=letter)
- 
-        # ESSE CAMPO AQUI É OQ VAI CRIAR OS TITULOS DA TABELA, ENTÃO PODEMOS COLOCAR ELE NO FORMATO DENTRO DE LISTAS E DESSA MANEIRA
-        # ['NOME', 'ENDEREÇO', 'EMAIL', 'RAMAL', 'VINCULO'] ---> EXEMPLO
-        data = [fields]
-        
+
+        # Converte lista de campos em dicionário com verbose_name (se possível)
+        if isinstance(fields, dict):
+            field_map = fields
+        else:
+            model = queryset.model
+            field_map = {}
+            for f in fields:
+                try:
+                    verbose = model._meta.get_field(f).verbose_name.capitalize()
+                except:
+                    verbose = f.capitalize()
+                field_map[f] = verbose
+
+        field_names = list(field_map.keys())
+        headers = list(field_map.values())
+        data = [headers]
+
         for obj in queryset:
-            row = [getattr(obj, field, '-') if getattr(obj, field, None) not in [None, ""] else '-' for field in fields]
+            row = []
+            for field in field_names:
+                try:
+                    value = getattr(obj, field, '-')
+                    value = value() if callable(value) else value
+                    row.append(str(value) if value not in [None, ""] else '-')
+                except Exception as e:
+                    print(f"[ERRO] Campo '{field}' falhou em {obj}: {e}")
+                    row.append('-')
             data.append(row)
-        
+
         table = Table(data)
-        
+
         style = TableStyle([
-            # Cabeçalho
             ('BACKGROUND', (0, 0), (-1, 0), '#0077BA'),
-            ('TEXTCOLOR', (0, 0), (-1, 0), (1, 1, 1)),  # Branco
+            ('TEXTCOLOR', (0, 0), (-1, 0), (1, 1, 1)),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            
-            # Corpo da tabela
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),  # Alinhamento horizontal
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Alinhamento vertical centralizado
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
-            
-            # Bordas
             ('GRID', (0, 0), (-1, -1), 0.5, (0, 0, 0)),
         ])
         table.setStyle(style)
 
-        # Adicionando o cabeçalho e a tabela ao documento
-        elements = []
-        elements.append(table)
-
-        doc.build(elements, onFirstPage=lambda c, d: add_header(c, d, title), onLaterPages=lambda c, d: add_header(c, d, title))
+        doc.build([table],
+                  onFirstPage=lambda c, d: add_header(c, d, title),
+                  onLaterPages=lambda c, d: add_header(c, d, title))
 
         return response
     except Exception as err:
         print(f'CARA DE ERRO AQUI VEY: {err}')
         return None
+
 
