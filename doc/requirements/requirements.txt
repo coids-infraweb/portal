@@ -11,7 +11,7 @@ XenAPI==2.14
 PyQRCode==1.2.1
 python-freeipa==1.0.5
 django-freeipa-auth-json==0.1.2.dev1
-celery>=5.0.0
+celery>=5.0
 django-celery-results>=2.0
 matplotlib==3.5.1
 pypng==0.0.21
@@ -23,4 +23,3 @@ wiki==0.8
 reportlab==3.6.1
 openpyxl
 git+https://github.com/coids-infraweb/django-garb.git
-
