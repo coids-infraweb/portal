@@ -7,6 +7,7 @@ from apps.colaborador.models import (Colaborador, VPN, Vinculo)
 from apps.core.admin import ColaboradorGrupoAcessoInLineRead, GroupInLine
 from apps.core.utils.freeipa import FreeIPA
 from datetime import datetime, timedelta
+
 @admin.register(Vinculo)
 class VinculoAdmin(admin.ModelAdmin):
     search_fields = ["vinculo"]

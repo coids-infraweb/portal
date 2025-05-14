@@ -37,7 +37,7 @@ class ServidorForm(forms.ModelForm):
 
     class Meta:
         model = Servidor
-        fields = ["nome", "tipo", "tipo_uso", "predio", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "servicos"]
+        fields = ["nome", "tipo", "tipo_uso", "predio", "datacenter", "descricao", "marca", "modelo", "serie", "patrimonio", "garantia", "consumo", "rack", "rack_tamanho", "vinculado", "status", "servicos"]
 
     def __init__(self, *args, **kwargs):
         super(ServidorForm, self).__init__(*args, **kwargs)
