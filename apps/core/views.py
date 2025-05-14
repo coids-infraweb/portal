@@ -14,7 +14,7 @@ from django.urls import reverse_lazy
 from django.utils.encoding import force_text
 from django.views.generic.base import RedirectView, TemplateView, View
 
-from apps.core.models import GrupoTrabalho
+from apps.core.models import GrupoTrabalho, GrupoAcesso
 from apps.colaborador.models import Colaborador
 from apps.infra.models import Servidor
 from apps.core.tasks import send_email_task
@@ -22,6 +22,7 @@ from apps.core.utils.freeipa import FreeIPA
 from apps.core.utils.history import HistoryCore
 from apps.core.utils.updategrupo import UpdateGrupoAcesso, UpdateColaboradorGrupo, UpdateGrupoVerificaDisco
 from garb.views import ViewContextMixin
+from apps.colaborador.utils import export_to_pdf, export_to_xlsx
 
 
 class AtualizarAssinaturaView(LoginRequiredMixin, PermissionRequiredMixin, View):
@@ -125,3 +126,13 @@ class CoreStatusView(TemplateView):
         context["grupo"] = GrupoTrabalho.objects.values("grupo").filter(data_criado__isnull=False).count()
         context["servidor"] = Servidor.objects.values("nome").filter(status="Em uso").count()
         return context
+
+# Exportar grupos de acesso
+def export_grupoAcesso_to_excel(request):
+    queryset = GrupoAcesso.objects.all()
+    return export_to_xlsx(queryset, fields=["grupo_acesso", "grupo_trabalho", "hbac_freeipa", "tipo", "data"], title="Relatório de Grupos de Acesso", filename="grupoAcesso.xlsx")
+
+def export_grupoAcesso_to_pdf(request):
+    queryset = GrupoAcesso.objects.all()
+    page_title = "Relatório de Grupos de Acesso"
+    return export_to_pdf(queryset=queryset, fields=["grupo_acesso", "grupo_trabalho", "hbac_freeipa", "tipo"], filename="grupoAcesso__.pdf", page_title=page_title)

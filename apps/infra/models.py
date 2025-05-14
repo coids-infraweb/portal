@@ -87,6 +87,11 @@ class Equipamento(models.Model):
         ("DOCUMENTO", "DOCUMENTO"),
     )
 
+    DATACENTER_CHOICES = [
+        ('SESUP', 'SESUP'),
+        ('COIDS', 'COIDS'),
+    ]
+
     marca = models.CharField("Marca", max_length=255, null=True)
     modelo = models.CharField("Modelo", max_length=255, null=True)
     serie = models.CharField("Serial", max_length=255, null=True)
@@ -100,7 +105,8 @@ class Equipamento(models.Model):
     consumo = models.CharField("Consumo nominal (Watts)", max_length=255, null=True)
     tipo = models.CharField(verbose_name="Tipo", max_length=255)
     tipo_uso = models.CharField(verbose_name="Tipo de Uso", choices=TIPOS_USO, max_length=255)
-    predio = models.ForeignKey("core.Predio", verbose_name="Prédio", null=True, on_delete=models.PROTECT)
+    predio = models.ForeignKey("core.Predio", verbose_name="Prédio", null=True, on_delete=models.PROTECT, related_name="equipamentos_datacenter")
+    datacenter = models.CharField("Datacenter", choices=DATACENTER_CHOICES, null=True, blank=True, max_length=255)
     grupos_acesso = models.ManyToManyField("core.GrupoAcesso", verbose_name="Grupos de Acesso", through="EquipamentoGrupoAcesso")
     grupos = models.CharField(verbose_name="grupos",  max_length=255, null=True, blank=False)
     objects = EquipamentoManager()
@@ -288,6 +294,48 @@ class Servidor(Equipamento):
             return host.hostnameip.hostname, host.hostnameip.ip
         return None
 
+    #adicionando metodos grupo e responsavel no modelo
+    @property
+    def grupo(self):
+        grupos = self.grupo_acesso_name().split(" | ")
+        if not grupos:
+            return "-"
+        
+        return "\n".join(grupos)
+    
+    @property
+    def responsavel(self):
+        grupos_acesso = self.grupos_acesso.all()
+        if not grupos_acesso.exists():
+            return "-"
+        
+        responsaveis = []
+        for grupo_acesso in grupos_acesso:
+            grupo_trabalho = grupo_acesso.grupo_trabalho
+            nomes = [f"{resp.first_name} {resp.last_name}" for resp in grupo_trabalho.responsavel.all()]
+            responsaveis.append(", ".join(nomes) if nomes else f"{grupo_trabalho.grupo}: Sem responsável")
+        
+        return "\n".join(responsaveis)
+    
+    @property
+    def responsavel_grupo(self):
+        grupos_acesso = self.grupos_acesso.all()
+        if not grupos_acesso.exists():
+            return "-"
+        
+        responsaveis = []
+        for grupo_acesso in grupos_acesso:
+            grupo_trabalho = grupo_acesso.grupo_trabalho
+            nomes = []
+            for resp in grupo_trabalho.responsavel.all():
+                primeiro_nome = resp.first_name.split()[0] if resp.first_name else ""
+                sobrenome_inicial = f"{resp.last_name[0]}." if resp.last_name else ""
+                nome_abreviado = f"{primeiro_nome} {sobrenome_inicial}".strip()
+                nomes.append(nome_abreviado)
+            
+            responsaveis.append(", ".join(nomes) if nomes else f"{grupo_trabalho.grupo}: Sem responsável")
+        
+        return "\n".join(responsaveis)
 
 class TemplateVM(models.Model):
     nome = models.CharField("nome", max_length=255, blank=True, null=True)

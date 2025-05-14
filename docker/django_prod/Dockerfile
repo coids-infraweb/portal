@@ -17,6 +17,7 @@ COPY . /app
 
 
 RUN apt-get update
+RUN pip install -r /app/requirements.txt
 RUN apt-get install -y locales locales-all 
 RUN pip install /app/django-garb
 ENV LC_ALL pt_BR.UTF-8
