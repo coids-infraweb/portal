@@ -301,6 +301,7 @@ class ServidorAdmin(admin.ModelAdmin):
     list_filter = [
         "tipo_uso", 
         "tipo", 
+        "datacenter",
         TenantsFilter,
         OperatingSystemFilter
     ]
