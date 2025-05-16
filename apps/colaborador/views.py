@@ -25,6 +25,19 @@ from apps.core.tasks import send_email_template_task
 from apps.core.utils.freeipa import FreeIPA
 from garb.views import ViewContextMixin
 
+class ColaboradorUpdateView(ViewContextMixin, LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = Colaborador
+    form_class = ColaboradorForm
+    template_name = "colaborador/form.html"
+    title = "Editar Colaborador"
+    permission_required = "colaborador.change_colaborador"
+    success_url = reverse_lazy("colaborador:secretaria")  
+
+    def form_valid(self, form):
+        colaborador = form.save()
+        messages.add_message(self.request, messages.SUCCESS, "Informações atualizadas com sucesso.")
+        return super().form_valid(form)
+
 
 class InicioView(ViewContextMixin, TemplateView):
     template_name = "colaborador/inicio.html"
