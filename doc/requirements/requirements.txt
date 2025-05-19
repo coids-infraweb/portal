@@ -22,4 +22,4 @@ paho-mqtt==1.5.1
 wiki==0.8
 reportlab==3.6.1
 openpyxl
-git+https://github.com/coids-infraweb/django-garb.git
+git+https://github.com/cptec-infra/django-garb.git
