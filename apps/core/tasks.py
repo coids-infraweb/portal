@@ -1,10 +1,12 @@
 from __future__ import absolute_import, unicode_literals
 
+import subprocess
+
 from celery import Celery, shared_task
+from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import get_template
-from django.conf import settings
-import subprocess
+
 
 def create_context(contexts_email):
     context = {}
@@ -48,3 +50,5 @@ def rodar_scripts_netapp():
         print("stdout 2:", result2.stdout)
     except Exception as err:
         print("Erro ao montar volumes:", err)
+
+      

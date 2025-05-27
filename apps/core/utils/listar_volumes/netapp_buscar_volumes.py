@@ -18,9 +18,6 @@ sys.path.append('./sdk/NetApp/')
 env = Env()
 env.read_env(os.path.join(settings.BASE_DIR,"prod.env"))
 
-print(f'*'*100)
-print(f'*'*100)
-
 # Inicio as Configuracoes
 list_svm = ["svm_dmz", "svm_share", "svm_int"]
 erros = []

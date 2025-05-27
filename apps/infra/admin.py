@@ -68,7 +68,7 @@ class GrupoAcessoEquipamentoInLine(admin.TabularInline):
     
     def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
         field = super(GrupoAcessoEquipamentoInLine, self).formfield_for_foreignkey(db_field, request, **kwargs)
-        field.queryset = field.queryset.filter(grupo_acesso__contains=request._obj_.tipo_uso).exclude(equipamento__id=request._obj_.id)
+        # field.queryset = field.queryset.filter(grupo_acesso__contains=request._obj_.tipo_uso).exclude(equipamento__id=request._obj_.id)
         return field
 
 

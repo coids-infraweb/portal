@@ -18,9 +18,6 @@ sys.path.append('./sdk/NetApp/')
 env = Env()
 env.read_env(os.path.join(settings.BASE_DIR,"prod.env"))
 
-print(f'#'*100)
-print(f'#'*100)
-
 # Inicio as Configuracoes
 erros = []
 conexao_banco_dados = MySQLdb.connect(env("DB_HOST"), env("DB_USER"), env("DB_PASSWORD"), env("DB_NAME"))
@@ -45,72 +42,78 @@ except Exception as e:
     print(e)
     conexao_banco_dados.rollback()
 
-
-
 try:
+
+
     cursor.execute("""  
-	With tdiscos AS ( 
-		SELECT
-			infra_storageareagrupotrabalho.grupo_id,
-			core_grupotrabalho.grupo_sistema, 
-			monitoramento_area.node, 
-			monitoramento_area.path, 
-			monitoramento_area.area, 
-			monitoramento_area.svm_name,
-			'auto.grupo' as automount,
-			CASE    WHEN monitoramento_area.area LIKE '%_dev_%' THEN 'DESENVOLVIMENTO'
-					WHEN monitoramento_area.area LIKE '%_doc_%' THEN 'DOCUMENTO'
-					WHEN monitoramento_area.area LIKE '%_pesq_%' THEN 'PESQUISA'
-					WHEN monitoramento_area.area LIKE '%_pesq_share_%' THEN 'PESQUISA'
-					WHEN monitoramento_area.area LIKE '%_share_%' THEN 'OPERACIONAL'
-					WHEN monitoramento_area.area LIKE '%_oper_%' THEN 'OPERACIONAL'
-					ELSE NULL
-				END as tipo,
-			CASE    WHEN monitoramento_area.path LIKE '/oper/dados/%' THEN '/oper/dados/'  
-					WHEN monitoramento_area.path LIKE '/oper/log/%' THEN '/oper/log/'  
-					WHEN monitoramento_area.path LIKE '/oper/scripts/%' THEN '/oper/scripts/'  
-					WHEN monitoramento_area.path LIKE '/dev/dados/%' THEN '/dev/dados/'  
-					WHEN monitoramento_area.path LIKE '/dev/log/%' THEN '/dev/log/'  
-					WHEN monitoramento_area.path LIKE '/dev/scripts/%' THEN '/dev/scripts/'
-					WHEN monitoramento_area.path LIKE '/pesq/dados/%' THEN '/pesq/dados/'  
-					WHEN monitoramento_area.path LIKE '/pesq/log/%' THEN '/pesq/log/'  
-					WHEN monitoramento_area.path LIKE '/pesq/scripts/%' THEN '/pesq/scripts/' 
-					WHEN monitoramento_area.path LIKE '/pesq/share/%' THEN '/pesq/share/' 
-					WHEN monitoramento_area.path LIKE '/share/%' THEN '/share/' 
-					ELSE NULL
-				END as namespace,
-			CASE    WHEN monitoramento_area.path LIKE '/oper/dados/%' THEN '/dados/'  
-					WHEN monitoramento_area.path LIKE '/oper/log/%' THEN '/log/'  
-					WHEN monitoramento_area.path LIKE '/oper/scripts/%' THEN '/scripts/'  
-					WHEN monitoramento_area.path LIKE '/dev/dados/%' THEN '/dados/'  
-					WHEN monitoramento_area.path LIKE '/dev/log/%' THEN '/log/'  
-					WHEN monitoramento_area.path LIKE '/dev/scripts/%' THEN '/scripts/'
-					WHEN monitoramento_area.path LIKE '/pesq/dados/%' THEN '/dados/'  
-					WHEN monitoramento_area.path LIKE '/pesq/log/%' THEN '/log/'  
-					WHEN monitoramento_area.path LIKE '/pesq/scripts/%' THEN '/scripts/' 
-					WHEN monitoramento_area.path LIKE '/pesq/share/%' THEN '/share/' 
-					WHEN monitoramento_area.path LIKE '/share/%' THEN '/share/' 
-					ELSE NULL
-				END as montagem
-			FROM monitoramento_area, infra_storageareagrupotrabalho, core_grupotrabalho
-			where monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id
-			and infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id
-	)
-		SELECT 
-			grupo_id, 
-			grupo_sistema, 
-			node, 
-			svm_name, 
-			tipo, 
-			CONCAT(namespace,grupo_sistema) as 'namespace', 
-			CONCAT(montagem,grupo_sistema) as 'montagem', 
-			automount, 
-			"-fstype=nfs4,rw" as parametro,
-			path
-		FROM tdiscos
-		WHERE CONCAT(namespace,grupo_sistema) = path
-	union  
-		SELECT 
+		       WITH tdiscos AS ( 
+				SELECT
+					infra_storageareagrupotrabalho.grupo_id,
+					core_grupotrabalho.grupo_sistema, 
+					monitoramento_area.node, 
+					monitoramento_area.path, 
+					monitoramento_area.area, 
+					monitoramento_area.svm_name,
+					'auto.grupo' as automount,
+					CASE
+						WHEN monitoramento_area.area LIKE '%dev%' THEN 'DESENVOLVIMENTO'
+						WHEN monitoramento_area.area LIKE '%doc%' THEN 'DOCUMENTO'
+						WHEN monitoramento_area.area LIKE '%pesq%' THEN 'PESQUISA'
+						WHEN monitoramento_area.area LIKE '%pesq_share%' THEN 'PESQUISA'
+						WHEN monitoramento_area.area LIKE '%share%' THEN 'OPERACIONAL'
+						WHEN monitoramento_area.area LIKE '%oper%' THEN 'OPERACIONAL'
+						WHEN monitoramento_area.area LIKE 'vol_int_%\_%\_dados' THEN 'OPERACIONAL'
+						ELSE NULL
+					END as tipo,
+					CASE
+						WHEN monitoramento_area.path LIKE '/oper/%' THEN '/oper/dados/'  
+						WHEN monitoramento_area.path LIKE '/oper/log/%' THEN '/oper/log/'  
+						WHEN monitoramento_area.path LIKE '/oper/scripts/%' THEN '/oper/scripts/'  
+						WHEN monitoramento_area.path LIKE '/dev/dados/%' THEN '/dev/dados/'  
+						WHEN monitoramento_area.path LIKE '/dev/log/%' THEN '/dev/log/'  
+						WHEN monitoramento_area.path LIKE '/dev/scripts/%' THEN '/dev/scripts/'
+						WHEN monitoramento_area.path LIKE '/pesq/dados/%' THEN '/pesq/dados/'  
+						WHEN monitoramento_area.path LIKE '/pesq/log/%' THEN '/pesq/log/'  
+						WHEN monitoramento_area.path LIKE '/pesq/scripts/%' THEN '/pesq/scripts/' 
+						WHEN monitoramento_area.path LIKE '/pesq/share/%' THEN '/pesq/share/' 
+						WHEN monitoramento_area.path LIKE '/share/%' THEN '/share/'
+						ELSE NULL
+					END as namespace,
+					CASE
+						WHEN monitoramento_area.path LIKE '/oper/%' THEN '/dados/'  
+						WHEN monitoramento_area.path LIKE '/oper/log/%' THEN '/log/'  
+						WHEN monitoramento_area.path LIKE '/oper/scripts/%' THEN '/scripts/'  
+						WHEN monitoramento_area.path LIKE '/dev/dados/%' THEN '/dados/'  
+						WHEN monitoramento_area.path LIKE '/dev/log/%' THEN '/log/'  
+						WHEN monitoramento_area.path LIKE '/dev/scripts/%' THEN '/scripts/'
+						WHEN monitoramento_area.path LIKE '/pesq/dados/%' THEN '/dados/'  
+						WHEN monitoramento_area.path LIKE '/pesq/log/%' THEN '/log/'  
+						WHEN monitoramento_area.path LIKE '/pesq/scripts/%' THEN '/scripts/' 
+						WHEN monitoramento_area.path LIKE '/pesq/share/%' THEN '/share/' 
+						WHEN monitoramento_area.path LIKE '/share/%' THEN '/share/'
+						ELSE NULL
+					END as montagem
+				FROM monitoramento_area, infra_storageareagrupotrabalho, core_grupotrabalho
+				WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id
+				AND infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id
+			)
+			SELECT 
+				grupo_id, 
+				grupo_sistema, 
+				node, 
+				svm_name, 
+				tipo, 
+				CONCAT(namespace,grupo_sistema) as 'namespace', 
+				CONCAT(montagem,grupo_sistema) as 'montagem', 
+				automount, 
+				"-fstype=nfs4,rw" as parametro,
+				path
+			FROM tdiscos
+			WHERE CONCAT(namespace,grupo_sistema) = path
+
+			UNION  
+
+			SELECT 
 				grupo_id, 
 				grupo_sistema, 
 				node, 
@@ -121,43 +124,49 @@ try:
 				automount, 
 				"-fstype=nfs4,rw" as parametro,
 				path
-		FROM tdiscos
-		WHERE CONCAT(namespace,grupo_sistema) = path
-		AND tipo = 'DESENVOLVIMENTO' 
-		AND path LIKE '/dev/dados/%'
-	union
-		SELECT 
-			infra_storageareagrupotrabalho.grupo_id,
-			core_grupotrabalho.grupo_sistema, 
-			monitoramento_area.node,
-			monitoramento_area.svm_name,
-			"OPERACIONAL",
-			CASE WHEN monitoramento_area.path = '/share' THEN '/&' ELSE '/oper/dados/&' END as namespace,
-			CASE WHEN monitoramento_area.path = '/share' THEN 'share' ELSE  '*' END as montagem,
-			"auto.oper" as automount,
-			"-fstype=nfs4,ro" as parametro,
-			monitoramento_area.path
-		FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho
-		WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id
-		AND infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id
-		AND (area = "vol_int_sesup_mount_oper" or area = "vol_share_sesup_mount_share")
-	union
-		SELECT   
-			infra_storageareagrupotrabalho.grupo_id, 
-			core_grupotrabalho.grupo_sistema,   
-			monitoramento_area.node,  
-			monitoramento_area.svm_name,  "OPERACIONAL",     
-			CONCAT(monitoramento_area.path,'/&') as namespace,     
-			"*" as montagem,      
-			"auto.home" as automount,  
-			"-fstype=nfs4,rw" as parametro,
-			monitoramento_area.path  
-		FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho 
-		WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id 
-		AND infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id 
-		AND monitoramento_area.path = "/HOME"
-	""")
+			FROM tdiscos
+			WHERE CONCAT(namespace,grupo_sistema) = path
+			AND tipo = 'DESENVOLVIMENTO' 
+			AND path LIKE '/dev/dados/%'
+
+			UNION
+
+			SELECT 
+				infra_storageareagrupotrabalho.grupo_id,
+				core_grupotrabalho.grupo_sistema, 
+				monitoramento_area.node,
+				monitoramento_area.svm_name,
+				"OPERACIONAL",
+				CASE WHEN monitoramento_area.path = '/share' THEN '/&' ELSE '/oper/dados/&' END as namespace,
+				CASE WHEN monitoramento_area.path = '/share' THEN 'share' ELSE  '*' END as montagem,
+				"auto.oper" as automount,
+				"-fstype=nfs4,ro" as parametro,
+				monitoramento_area.path
+			FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho
+			WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id
+			AND infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id
+			AND (area = "vol_int_sesup_mount_oper" or area = "vol_share_sesup_mount_share")
+
+			UNION
+
+			SELECT   
+				infra_storageareagrupotrabalho.grupo_id, 
+				core_grupotrabalho.grupo_sistema,   
+				monitoramento_area.node,  
+				monitoramento_area.svm_name,  "OPERACIONAL",     
+				CONCAT(monitoramento_area.path,'/&') as namespace,     
+				"*" as montagem,      
+				"auto.home" as automount,  
+				"-fstype=nfs4,rw" as parametro,
+				monitoramento_area.path  
+			FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho 
+			WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id 
+			AND infra_storageareagrupotrabalho.grupo_id = core_grupotrabalho.id 
+			AND monitoramento_area.path = "/HOME";
+		""")
+
     tdiscos = cursor.fetchall()
+    
 except Exception as e:
     print(e)
     conexao_banco_dados.rollback()

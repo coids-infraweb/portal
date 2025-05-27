@@ -1,17 +1,22 @@
+import os
 import subprocess
 import argparse
+from environ import Env
+from portal import settings
 
-AGGREGATE = "aggr_FSAS16T04_N3"
+env = Env()
+env.read_env(os.path.join(settings.BASE_DIR,"prod.env"))
 
 
-def comando_netapp(divisao, grupo, produto, user):
-    print(f"entrou")
+def comando_netapp(divisao, grupo, produto):
     try:
-        volume = f"vol_int_{divisao}_{grupo}_{produto}_dados".lower()
-        montagem = f"/{produto}_dados".lower()
-        password = '!Net03App@#'
+        AGGREGATE = env("NETAPP_AGGREGATE")
+        user=env("NETAPP_ADMIN")
+        volume = f"vol_int_{divisao}_{grupo}_dados".lower()
+        montagem = f"/oper/dados/{grupo}".lower()
+        password = env("NETAPP_PASSWORD_ADMIN")
         vserver = "svm_int"
-        policy = "policy_int_ro"
+        policy = env("NETAPP_POLICY")
         size = '5GB'
         permissions = '2750'
         snapshot = 'default'
