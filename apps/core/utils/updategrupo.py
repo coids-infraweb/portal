@@ -52,9 +52,6 @@ class UpdateGrupoVerificaDisco:
         discos_verificado = True
         discos = [montagem.tipo for montagem in  StorageGrupoAcessoMontagem.objects.filter(grupo_trabalho=grupo_trabalho,svm_name='svm_int')]
 
-        print(f'discos? {discos}')
-        print(len(discos))
-        print('###################################')
         if len(discos) < 1:
             discos_verificado = False
 

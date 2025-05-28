@@ -71,43 +71,42 @@ class CriarContaGrupoTrabalhoView(LoginRequiredMixin, PermissionRequiredMixin, R
 
     def get_redirect_url(self, *args, **kwargs):
         grupo_trabalho = get_object_or_404(GrupoTrabalho, id=kwargs["pk"])
+        if grupo_trabalho.responsavelgrupotrabalho_set.all().exists() and grupo_trabalho.gid > 0 and grupo_trabalho.confirmacao == True and UpdateGrupoVerificaDisco().verifica_disco(grupo_trabalho=grupo_trabalho, request=self.request):
 
+            client_feeipa = FreeIPA(self.request)
+            if client_feeipa.group_find_count(cn=grupo_trabalho.grupo_sistema) == 0:
+                if client_feeipa.set_grupo(grupo_trabalho):
+                    send_email_task.delay("Conta de Grupo Criada",f"A Conta para Grupo de trabalho: {grupo_trabalho.grupo} foi criada no FreeIPA, por:{self.request.user.username,}",[settings.EMAIL_SYSADMIN])
+                    history_core = HistoryCore(self.request)
+                    history_core.update_grupo_acesso(grupo=grupo_trabalho, assunto="Nova conta de Grupo de Trabalho")
+                    UpdateGrupoAcesso(client_feeipa=client_feeipa, history_core=history_core).update_acesso(grupo_trabalho)
+                    UpdateColaboradorGrupo(client_feeipa=client_feeipa, history_core=history_core).update_user(grupo_trabalho)
+                    messages.add_message(self.request, messages.WARNING, "Os volumes do Storage devem ser criados conforme o cadastro!")
+            else:
+                messages.add_message(self.request, messages.ERROR, "O grupo já existe!")
+        else:
+            messages.add_message(self.request, messages.ERROR, "Confira o Cadastro, existe informação faltando ou não salva! ")
+        return reverse_lazy("admin:core_grupotrabalho_change", kwargs={"object_id": grupo_trabalho.id})
+
+
+
+class CriarVolumeNetAppGrupoTrabalhoView(LoginRequiredMixin, PermissionRequiredMixin, RedirectView):
+    permission_required = "core.change_grupotrabalho"
+
+    def get_redirect_url(self, *args, **kwargs):
+        grupo_trabalho = get_object_or_404(GrupoTrabalho, id=kwargs["pk"])
         divisao = grupo_trabalho.divisao
         grupo = grupo_trabalho.grupo
         produto = grupo_trabalho.grupo_sistema
-
+        
+        messages.success(self.request, "Criação da conta iniciada. Pode levar até 5 minutos.")
+        
         comando_netapp(
             divisao=divisao,
             grupo=grupo,
             produto=produto,            
         )
-
         rodar_scripts_netapp.delay()
-        
-        messages.success(self.request, "Criação da conta iniciada. Pode levar até 5 minutos.")
-
-        if (
-            grupo_trabalho.responsavelgrupotrabalho_set.all().exists()
-            and grupo_trabalho.gid > 0
-            and grupo_trabalho.confirmacao is True
-            and UpdateGrupoVerificaDisco().verifica_disco(grupo_trabalho=grupo_trabalho, request=self.request)
-        ):
-            client_feeipa = FreeIPA(self.request)
-            if client_feeipa.group_find_count(cn=grupo_trabalho.grupo_sistema) == 0:
-                if client_feeipa.set_grupo(grupo_trabalho):
-                    # send_email_task.delay(
-                    #     "Conta de Grupo Criada",
-                    #     f"A Conta para Grupo de trabalho: {grupo_trabalho.grupo} foi criada no FreeIPA, por: {self.request.user.username}",
-                    #    [settings.EMAIL_SYSADMIN]
-                    # )
-                    history_core = HistoryCore(self.request)
-                    history_core.update_grupo_acesso(grupo=grupo_trabalho, assunto="Nova conta de Grupo de Trabalho")
-                    UpdateGrupoAcesso(client_feeipa=client_feeipa, history_core=history_core).update_acesso(grupo_trabalho)
-                    UpdateColaboradorGrupo(client_feeipa=client_feeipa, history_core=history_core).update_user(grupo_trabalho)
-            else:
-                messages.add_message(self.request, messages.ERROR, "O grupo já existe!")
-        else:
-            messages.add_message(self.request, messages.ERROR, "Confira o Cadastro, existe informação faltando ou não salva!")
         
         return reverse("admin:core_grupotrabalho_change", kwargs={"object_id": grupo_trabalho.id})
 
