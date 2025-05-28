@@ -75,7 +75,6 @@ class CriarContaGrupoTrabalhoView(LoginRequiredMixin, PermissionRequiredMixin, R
         divisao = grupo_trabalho.divisao
         grupo = grupo_trabalho.grupo
         produto = grupo_trabalho.grupo_sistema
-        user_netapp = "admin"
 
         comando_netapp(
             divisao=divisao,
@@ -99,7 +98,7 @@ class CriarContaGrupoTrabalhoView(LoginRequiredMixin, PermissionRequiredMixin, R
                     # send_email_task.delay(
                     #     "Conta de Grupo Criada",
                     #     f"A Conta para Grupo de trabalho: {grupo_trabalho.grupo} foi criada no FreeIPA, por: {self.request.user.username}",
-                    #     [settings.EMAIL_SYSADMIN]
+                    #    [settings.EMAIL_SYSADMIN]
                     # )
                     history_core = HistoryCore(self.request)
                     history_core.update_grupo_acesso(grupo=grupo_trabalho, assunto="Nova conta de Grupo de Trabalho")

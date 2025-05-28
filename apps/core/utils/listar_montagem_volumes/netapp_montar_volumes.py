@@ -14,7 +14,6 @@ from environ import Env
 from django.conf import settings
 sys.path.append('./sdk/NetApp/')
 
-
 env = Env()
 env.read_env(os.path.join(settings.BASE_DIR,"prod.env"))
 
@@ -43,8 +42,6 @@ except Exception as e:
     conexao_banco_dados.rollback()
 
 try:
-
-
     cursor.execute("""  
 		       WITH tdiscos AS ( 
 				SELECT

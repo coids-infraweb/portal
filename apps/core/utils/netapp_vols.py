@@ -2,11 +2,10 @@ import os
 import subprocess
 import argparse
 from environ import Env
-from portal import settings
+from django.conf import settings
 
 env = Env()
 env.read_env(os.path.join(settings.BASE_DIR,"prod.env"))
-
 
 def comando_netapp(divisao, grupo, produto):
     try:
