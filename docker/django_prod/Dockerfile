@@ -18,7 +18,7 @@ COPY . /app
 
 RUN apt-get update
 RUN pip install -r /app/requirements.txt
-RUN apt-get install -y locales locales-all 
+RUN apt-get install -y locales locales-all sshpass
 ENV LC_ALL pt_BR.UTF-8
 ENV LANG pt_BR.UTF-8
 ENV LANGUAGE pt_BR.UTF-8
