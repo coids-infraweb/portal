@@ -12,8 +12,8 @@ import pandas as pd
 from io import BytesIO
 from django.http import HttpResponse
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib.pagesizes import letter, landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.lib import colors
@@ -141,18 +141,24 @@ class HistoryColaborador:
 
 def add_header(canvas, doc, title):
     canvas.saveState()
-    canvas.setFont('Helvetica-Bold', 12)
+    canvas.setFont('Helvetica-Bold', 15)
 
-    header_text = title  
+    page_width, page_height = canvas._pagesize  # pega largura e altura da página atual
+
+    header_text = title
     image_path = "static/image/logo-coids.png"
-    text_width = canvas.stringWidth(header_text, 'Helvetica-Bold', 12)
-    x_position = (letter[0] - text_width) / 2
+
+    text_width = canvas.stringWidth(header_text, 'Helvetica-Bold', 15)
+    x_position = (page_width - text_width) / 2
 
     image_width = 2 * cm
-    image_height = 2 * cm    
-    canvas.drawImage(image_path, 1 * cm, letter[1] - 2.5 * cm, width=image_width, height=image_height, preserveAspectRatio=True)
+    image_height = 2 * cm
 
-    canvas.drawString(x_position, letter[1] - 1.5 * cm, header_text)
+    # desenha o logo no topo esquerdo
+    canvas.drawImage(image_path, 1 * cm, page_height - 2.5 * cm, width=image_width, height=image_height, preserveAspectRatio=True)
+
+    # desenha o título centralizado
+    canvas.drawString(x_position, page_height - 1.5 * cm, header_text)
 
     canvas.restoreState()
 
@@ -264,15 +270,15 @@ def export_to_xlsx(queryset, fields, title="Relatório", filename="relatorio.xls
         print(f'Erro ao gerar Excel: {str(err)}')
         return HttpResponse(f"Erro ao gerar arquivo: {str(err)}", status=500)
 
-
-def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
+def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None, pagesize=letter):
     try:
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename={filename}'
         title = page_title or "Dados exportados para PDF"
-        doc = SimpleDocTemplate(response, pagesize=letter)
+        doc = SimpleDocTemplate(response, pagesize=pagesize)
+        styles = getSampleStyleSheet()
+        style_normal = styles['Normal']
 
-        # Converte lista de campos em dicionário com verbose_name (se possível)
         if isinstance(fields, dict):
             field_map = fields
         else:
@@ -295,13 +301,26 @@ def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
                 try:
                     value = getattr(obj, field, '-')
                     value = value() if callable(value) else value
-                    row.append(str(value) if value not in [None, ""] else '-')
+                    text = str(value) if value not in [None, ""] else '-'
+
+                    if field == "descricao":
+                        row.append(Paragraph(text, style_normal))
+                    else:
+                        row.append(text)
                 except Exception as e:
                     print(f"[ERRO] Campo '{field}' falhou em {obj}: {e}")
                     row.append('-')
             data.append(row)
 
-        table = Table(data)
+        # Define largura da coluna de descrição apenas
+        col_widths = []
+        for field in field_names:
+            if field == "descricao":
+                col_widths.append(170)  # largura maior para quebrar linha de texto
+            else:
+                col_widths.append(None)  # None = largura automática
+
+        table = Table(data, colWidths=col_widths)
 
         style = TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), '#0077BA'),
@@ -322,5 +341,3 @@ def export_to_pdf(queryset=None, fields=None, filename=None, page_title=None):
     except Exception as err:
         print(f'CARA DE ERRO AQUI VEY: {err}')
         return None
-
-

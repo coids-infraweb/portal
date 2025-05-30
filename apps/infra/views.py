@@ -32,6 +32,7 @@ from apps.monitoramento.models.nagios import NagiosServicos
 from apps.colaborador.utils import export_to_pdf, export_to_xlsx
 from apps.infra.models import Storage, Servidor, Supercomputador, EquipamentoParte, AmbienteVirtual, TemplateVM, Rack, HostnameIP, Rede
 from django.db.models import Sum
+from reportlab.lib.pagesizes import landscape, A4
 
 class DataCenterView(ViewContextMixin, TemplateView):
     template_name = "infra/datacenter/datacenter.html"
@@ -266,11 +267,14 @@ def export_servidor_to_pdf(request):
             "tipo": "Tipo",
             "tipo_uso": "Tipo de Uso",
             "datacenter": "Data Center",
+            "descricao": "Descrição",
             "grupo": "Grupo",
-            "responsavel_grupo": "Responsável Grupo"
+            "responsavel_grupo": "Responsável Grupo",
+            "status": "Status"
         },
         filename="servidores__.pdf",
-        page_title=page_title
+        page_title=page_title,
+        pagesize=landscape(A4)
     )
 
 def export_servidor_to_excel(request):

@@ -329,8 +329,9 @@ class Servidor(Equipamento):
             nomes = []
             for resp in grupo_trabalho.responsavel.all():
                 primeiro_nome = resp.first_name.split()[0] if resp.first_name else ""
-                sobrenome_inicial = f"{resp.last_name[0]}." if resp.last_name else ""
-                nome_abreviado = f"{primeiro_nome} {sobrenome_inicial}".strip()
+                #sobrenome_inicial = f"{resp.last_name[0]}." if resp.last_name else ""
+                ultimo_sobrenome = resp.last_name.strip().split()[-1] if resp.last_name else ""
+                nome_abreviado = f"{primeiro_nome} {ultimo_sobrenome}".strip()
                 nomes.append(nome_abreviado)
             
             responsaveis.append(", ".join(nomes) if nomes else f"{grupo_trabalho.grupo}: Sem responsável")
