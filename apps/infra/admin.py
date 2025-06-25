@@ -464,7 +464,7 @@ class TemplateVMAdmin(admin.ModelAdmin):
         return super().save_formset(request, form, formset, change)
 
     def delete_model(self, request, obj):
-        for template_hostnameip in TemplateHostnameIP.objects.filter(servidor__id=obj.pk):
+        for template_hostnameip in TemplateHostnameIP.objects.filter(id=obj.pk):
             hostnameip = template_hostnameip.hostnameip
             hostnameip.reservado = False
             hostnameip.save()

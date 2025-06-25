@@ -267,7 +267,7 @@ class Servidor(Equipamento):
     nagios_servicos = models.ManyToManyField('monitoramento.NagiosServicos', blank=True,through="ServidorNagiosServico")
     servicos = models.CharField('serviços', max_length=255, blank=True, null=True)
     tenants = models.ManyToManyField("core.Tenants", blank=True)
-    so = models.ManyToManyField("core.OperatingSystem", blank=True, null=True)
+    so = models.ManyToManyField("core.OperatingSystem", blank=True)
     
     objects = ServidorManager()
 

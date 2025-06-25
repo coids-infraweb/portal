@@ -12,6 +12,20 @@ from django.conf import settings
 import fabric  
 import time
 
+def get_tipo(vm_tipo):
+    try:
+        if 'OPERACIONAL' in str(vm_tipo):
+            return "OPER"
+        if 'DESENVOLVIMENTO' in str(vm_tipo):
+            return "DEV"
+        if 'PESQUISA' in str(vm_tipo):
+            return "PESQ"
+        if 'DMZ' in str(vm_tipo):
+            return "DMZ"
+    except Exception as e:
+        print(f'Erro GET_TIPO {e}')
+        return ""
+
 def get_comandos(origem, destino):
     comandos_final = {'1': [], '2': [], '3': []}
     template_origem, template_origem_ip = origem.host_principal
@@ -30,6 +44,9 @@ def get_comandos(origem, destino):
                 "{freeipa_server_replica}": settings.IPA_AUTH_SERVER_REPLICA,
                 "{freeipa_password}": settings.IPA_AUTH_PASSWORD,
                 "{freeipa_admin}": settings.IPA_AUTH_USER,
+                "{wazuh_server}": settings.WAZUH_SERVER,
+                "{wazuh_pass}": settings.WAZUH_PASS,
+                "{tipo}": get_tipo(destino.tipo_uso)
                 }
     
     for comando in origem.template_comandos.all().exclude(configuracao=2):
@@ -66,11 +83,12 @@ def create_vm_task(self, servidor, vm_id,  template_id, memoria, cpu):
     cpu = int(cpu)
     total = 200
     try:
+        print(f'servidor: {servidor}')
         progress_recorder.set_progress(1, total, description="Conetando no XEN")
-        session = Session(f"http://{servidor}.cptec.inpe.br")
+        session = Session(f"http://{servidor}")
         session.xenapi.login_with_password(user, password)
     except OSError as err:
-        raise OSError(1, f"OS error: {err}")
+        raise OSError(1, f"OS error Create: {err}")
     try:
         progress_recorder.set_progress(4, total, description="Carregando Template")
         template_ref = session.xenapi.VM.get_by_name_label(template)[0]
@@ -124,15 +142,27 @@ def create_vm_task(self, servidor, vm_id,  template_id, memoria, cpu):
 
         print('referencia: ', vm_ref)
         progress_recorder.set_progress(contador_progress_temporario, total, description="Reiniciando")
-        command.run("shutdown -r now")
+        print ('antes reboot')
+        try:
+            print('entrou no Try')
+            command.run("reboot")
+            print('reboot realizado')
+        except Exception as e:
+            print(f'entrou no exception: {e}')
+            time.sleep(90)
+       # command.run("sudo init 6")
+        print('depois reboot')
         time.sleep(90)
+        print('terminou o sleep')
         command = fabric.Connection(vm_ip, port=22, user=root, connect_kwargs={'password': root_password})
+        print(f'command: {command}')
         print('Comandos Finais:')
         for comando in comandos["3"]:
             contador_progress_temporario +=2
             progress_recorder.set_progress(contador_progress_temporario, total, description="Executando Comandos Finais")
-            print(comando)
+            print(f'iniciando o comando: {comando}')
             command.run(comando)
+            print(f'finalizado comando: {comando}')
         progress_recorder.set_progress(199, total, description="Desabilitando ssh root")
         
         # Alterado ordem da reinicialização
@@ -150,7 +180,7 @@ def create_vm_task(self, servidor, vm_id,  template_id, memoria, cpu):
     destino.vm_ambiente_virtual = origem.ambiente_virtual
     destino.save()
     send_mail('Criação de VM OK',f'{vm} criada com sucesso!' , settings.EMAIL_HOST_USER, [settings.EMAIL_SUPORTE, settings.EMAIL_SYSADMIN, ])
-    return f"{vm} OK"
+    return f"{vm.upper()} OK"
 
 @shared_task(bind=True)
 def delete_vm_task(self, servidor, vm_name):
@@ -173,6 +203,7 @@ def delete_vm_task(self, servidor, vm_name):
         send_mail('Remoção de VM OK',f'{vm_name} removida com sucesso!' , settings.EMAIL_HOST_USER, [settings.EMAIL_SUPORTE, settings.EMAIL_SYSADMIN, ])
         return f"{vm_name} DELETE"
     except Exception as e:
+        print(f'entrei aqui nessa exception')
         send_mail('ERRO na Remoção de VM', str(e) , settings.EMAIL_HOST_USER, [settings.EMAIL_SUPORTE, settings.EMAIL_SYSADMIN, ])
         return f"Error: {str(e)}"
         
