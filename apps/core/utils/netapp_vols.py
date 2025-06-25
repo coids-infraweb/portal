@@ -43,7 +43,4 @@ def comando_netapp(divisao, grupo, produto):
             return False
     except Exception as err:
         print(f'Deu erro em segundo plano?: {err}')
-
-
-print("\n##### Criando volumes dirs")
     

@@ -543,11 +543,16 @@ class AmbienteVirtual(models.Model):
         ('ON', 'Ativo'),
         ('OFF', 'Inativo'),
     ]
+    NETWORK_CHOICES = [
+        (1, 'INTERNA'),
+        (2, 'DMZ'),
+    ]
     nome = models.CharField("nome", max_length=255)
     virtualizador = models.CharField("virtualizador", max_length=255)
     versao = models.CharField("versao", max_length=255)
     status = models.CharField("status", max_length=3, choices=STATUS_CHOICES, default='ON')
     servidor = models.ManyToManyField("infra.Servidor")
+    network = models.PositiveSmallIntegerField("Tipo de Rede", choices=NETWORK_CHOICES, default=1)
 
     class Meta:
         verbose_name = "Ambiente Virtual"

@@ -491,8 +491,8 @@ class EquipamentoParteAdmin(admin.ModelAdmin):
 @admin.register(AmbienteVirtual)
 class AmbienteVirtualAdmin(admin.ModelAdmin):
     search_fields = ["nome"]
-    list_display = ["nome", "virtualizador", "versao", "status"]
-    fields = ["nome", "virtualizador", "versao", "status"]
+    list_display = ["nome", "virtualizador", "versao", "status", "network"]
+    fields = ["nome", "virtualizador", "versao", "status", "network"]
     inlines = (AmbienteVirtualServidorInLine,)
 
 

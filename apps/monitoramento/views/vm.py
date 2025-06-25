@@ -37,7 +37,7 @@ class XenPoolListView(TemplateView):
         context = super().get_context_data(**kwargs)
         ambiente = AmbienteVirtual.objects.get(pk=kwargs["pk"])
         servidores = [servidor.nome for servidor in ambiente.servidor.all()]
-        xen_info = XenInfo(str(ambiente), servidores)
+        xen_info = XenInfo(ambiente=str(ambiente), servidores=servidores, ambiente_virtual=ambiente)
         context["title"] = ambiente
         context["pool"] = xen_info.carregar()
         return context

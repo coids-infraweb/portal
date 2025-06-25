@@ -124,12 +124,13 @@ class VDI:
 
 
 class XenInfo:
-    def __init__(self, ambiente, servidores):
+    def __init__(self, ambiente, servidores, ambiente_virtual):
         self.pool = Pool(ambiente)
         self.servers = servidores
+        self.avirtual_network = ambiente_virtual.network
         self.server = self.servers[0]
         self.user = settings.XEN_AUTH_USER
-        self.password = settings.XEN_AUTH_PASSWORD
+        self.password = settings.XEN_AUTH_PASSWORD if self.avirtual_network == 1 else settings.XEN_AUTH_PASSWORD_DMZ
         self.session = None
         servidor_obj = Servidor.objects.get(nome=servidores[0])
         if servidor_obj:
@@ -138,7 +139,7 @@ class XenInfo:
                 for hostnameip in servidor_obj.hostname_ip.all()
                 if hostnameip.ip
             ]
-            self.servidor = self.servidor_ips
+            self.servidor = self.servidor_ips[0]
         else:
             self.servidor = []
 
@@ -146,7 +147,7 @@ class XenInfo:
     # Login
     def login(self):
         try:
-            self.session = Session(f"http://{self.servidor[0]}")
+            self.session = Session(f"http://{self.servidor}")
             self.session.xenapi.login_with_password(self.user, self.password)
         except Failure as err:
             id_server = int(self.servers.index(self.server)) + 1
