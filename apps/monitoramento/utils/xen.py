@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 from django.conf import settings
 from XenAPI import Failure, Session
-
+from apps.infra.models import Servidor
 
 class Pool:
     hosts = []
@@ -131,11 +131,22 @@ class XenInfo:
         self.user = settings.XEN_AUTH_USER
         self.password = settings.XEN_AUTH_PASSWORD
         self.session = None
+        servidor_obj = Servidor.objects.get(nome=servidores[0])
+        if servidor_obj:
+            self.servidor_ips = [
+                hostnameip.ip
+                for hostnameip in servidor_obj.hostname_ip.all()
+                if hostnameip.ip
+            ]
+            self.servidor = self.servidor_ips
+        else:
+            self.servidor = []
+
 
     # Login
     def login(self):
         try:
-            self.session = Session(f"http://{self.server}.cptec.inpe.br")
+            self.session = Session(f"http://{self.servidor[0]}")
             self.session.xenapi.login_with_password(self.user, self.password)
         except Failure as err:
             id_server = int(self.servers.index(self.server)) + 1
