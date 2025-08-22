@@ -103,7 +103,7 @@ try:
 				CONCAT(namespace,grupo_sistema) as 'namespace', 
 				CONCAT(montagem,grupo_sistema) as 'montagem', 
 				automount, 
-				"-fstype=nfs4,rw" as parametro,
+				"-fstype=nfs4.0,rw" as parametro,
 				path
 			FROM tdiscos
 			WHERE CONCAT(namespace,grupo_sistema) = path
@@ -119,7 +119,7 @@ try:
 				CONCAT(namespace,grupo_sistema) as 'namespace', 
 				CONCAT('/share/',grupo_sistema) as 'montagem', 
 				automount, 
-				"-fstype=nfs4,rw" as parametro,
+				"-fstype=nfs4.0,rw" as parametro,
 				path
 			FROM tdiscos
 			WHERE CONCAT(namespace,grupo_sistema) = path
@@ -137,7 +137,7 @@ try:
 				CASE WHEN monitoramento_area.path = '/share' THEN '/&' ELSE '/oper/dados/&' END as namespace,
 				CASE WHEN monitoramento_area.path = '/share' THEN 'share' ELSE  '*' END as montagem,
 				"auto.oper" as automount,
-				"-fstype=nfs4,ro" as parametro,
+				"-fstype=nfs4.0,ro" as parametro,
 				monitoramento_area.path
 			FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho
 			WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id
@@ -154,7 +154,7 @@ try:
 				CONCAT(monitoramento_area.path,'/&') as namespace,     
 				"*" as montagem,      
 				"auto.home" as automount,  
-				"-fstype=nfs4,rw" as parametro,
+				"-fstype=nfs4.0,rw" as parametro,
 				monitoramento_area.path  
 			FROM monitoramento_area,infra_storageareagrupotrabalho, core_grupotrabalho 
 			WHERE monitoramento_area.storage_grupo_trabalho_id = infra_storageareagrupotrabalho.id 
