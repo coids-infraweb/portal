@@ -154,7 +154,7 @@ class Supercomputador(Equipamento):
         verbose_name_plural = "Supercomputador"
 
     def __str__(self):
-        return f"{self.marca} {self.modelo}"
+        return f"{self.modelo}"
 
     def add_rack(self, rack):
         self.racks.append(rack)
