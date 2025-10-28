@@ -83,7 +83,7 @@ start-dev:
 # target: start-prod - start for oper 
 start-prod:
 	export django_settings_module=portal.settings.production
-	docker-compose -f ./docker/docker-compose_production.yml -p prod_portal --project-directory $(shell pwd) up
+	docker-compose -f ./docker/docker-compose_production.yml -p prod_portal --project-directory $(shell pwd) up -d
 
 # target: test-dev - start test in dev
 test-dev:
@@ -117,3 +117,4 @@ update-prod:
 	docker image rm docker images prod_portal_django-celery --format "{{.ID}}"
 	docker image rm docker images prod_portal_gunicorn --format "{{.ID}}"
 	docker-compose -f ./docker/docker-compose_production_update -p prod_portal --project-directory $(shell pwd) up -d
+
